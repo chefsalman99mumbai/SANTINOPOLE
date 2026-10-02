@@ -1,10 +1,10 @@
 /* ============================================================
-   SANTINOPOLE — city.js — GRID-PLANNED EUROPEAN CITY
+   SANTINOPOLE — city.js
    ------------------------------------------------------------
-   Strict rectangular grid. Streets at fixed intervals.
-   Blocks between streets. Buildings sit FLUSH on block edges,
-   forming continuous street walls — like Milan and San Francisco.
-   No jitter. No random rotation. Real city fabric.
+   Real Milan. Real urban fabric. Real districts in their real
+   positions. Grid-planned blocks with central courtyards.
+   Two ring boulevards (Cerchia + Bastioni), 8 radials,
+   tram lines, and Navigli-inspired canals.
    ============================================================ */
 
 (function () {
@@ -26,163 +26,184 @@
   function rand(a, b) { return a + RNG() * (b - a); }
 
   /* ============================================================
-     GRID CONSTANTS
+     MILAN LAYOUT CONSTANTS
      ============================================================ */
-  var GRID = {
-    min: -800,
-    max:  800,
-    step: 100,          // distance between block centers
-    streetW: 14,        // visible street width
-    halfBlock: 43,      // (100 - 14) / 2
-    bayEdgeZ: -720,
-    hillStartZ: 620
+  var MILAN = {
+    outerR: 800,
+    // Rings
+    ring1R: 220,      // Cerchia dei Navigli (medieval moat → ring road)
+    ring2R: 460,      // Bastioni (Spanish walls → ring road)
+    // Block sizes (interior) + street widths
+    blockCenter: 60,  streetCenter: 12,
+    blockMiddle: 90,  streetMiddle: 14,
+    blockOuter:  110, streetOuter:  16,
+    // Ring / radial
+    ringW: 32,
+    radialW: 24,
+    numRadials: 8,
+    buildingDepth: 18
   };
 
+  var gridStepCenter = MILAN.blockCenter + MILAN.streetCenter;   // 72
+  var gridStepMiddle = MILAN.blockMiddle + MILAN.streetMiddle;   // 104
+  var gridStepOuter  = MILAN.blockOuter  + MILAN.streetOuter;    // 126
+
   /* ============================================================
-     DISTRICTS
+     DISTRICTS — real Milan positions, Santinopolitan names
      ============================================================ */
   var DISTRICTS = [
-    { id: 'downtown',   name: 'The Spine',        type: 'downtown',    center: [0,    0],    radius: 220, density: 1.0, character: 'financial' },
-    { id: 'web',        name: 'Web Quarter',      type: 'web',         center: [420, -80],   radius: 230, density: 0.9, character: 'creative' },
-    { id: 'seo',        name: 'Index Ward',       type: 'seo',         center: [-420,-80],   radius: 230, density: 0.9, character: 'data' },
-    { id: 'growth',     name: 'Growth Front',     type: 'growth',      center: [0,   -420],  radius: 260, density: 1.0, character: 'commercial' },
-    { id: 'waterfront', name: 'The Embarcadero',  type: 'waterfront',  center: [0,   -600],  radius: 180, density: 0.7, character: 'harbor' },
-    { id: 'civic',      name: 'Piazza Santino',   type: 'civic',       center: [0,    420],  radius: 160, density: 0.8, character: 'civic' },
-    { id: 'hills',      name: 'The Ridges',       type: 'residential', center: [0,    720],  radius: 380, density: 0.6, character: 'residential' },
-    { id: 'arts',       name: 'Atelier Row',      type: 'arts',        center: [340,  380],  radius: 140, density: 0.9, character: 'cultural' },
-    { id: 'nightlife',  name: 'Neon Ward',        type: 'nightlife',   center: [-340, 380],  radius: 140, density: 0.9, character: 'entertainment' },
-    { id: 'parks_e',    name: 'Linden Green',     type: 'park',        center: [640, -280],  radius: 140, density: 0.0, character: 'park' },
-    { id: 'parks_w',    name: 'Ivy Commons',      type: 'park',        center: [-640,-280],  radius: 140, density: 0.0, character: 'park' }
+    { id: 'centro',   name: 'Centro',             type: 'downtown',    center: [0,     0],    radius: 200, density: 1.0, character: 'financial' },
+    { id: 'brera',    name: 'Atelier Quarter',    type: 'arts',        center: [-110, -180],  radius: 130, density: 0.95, character: 'cultural' },
+    { id: 'moda',     name: 'Fashion District',   type: 'fashion',     center: [140,  -60],   radius: 140, density: 0.95, character: 'fashion' },
+    { id: 'isola',    name: 'Web Quarter',        type: 'web',         center: [240, -320],   radius: 200, density: 0.9, character: 'creative' },
+    { id: 'citta',    name: 'Index Ward',         type: 'seo',         center: [500, -180],   radius: 180, density: 0.85, character: 'data' },
+    { id: 'corso',    name: 'Grand Corso',        type: 'shopping',    center: [280,  -40],   radius: 150, density: 1.0, character: 'shopping' },
+    { id: 'romana',   name: 'Growth Front',       type: 'growth',      center: [80,   400],   radius: 200, density: 1.0, character: 'commercial' },
+    { id: 'navigli',  name: 'Canal Quarter',      type: 'canal',       center: [-340, 320],   radius: 240, density: 0.9, character: 'canal' },
+    { id: 'ticinese', name: 'Ticinese',           type: 'residential', center: [-140, 380],   radius: 130, density: 0.9, character: 'residential' },
+    { id: 'sempione', name: 'Linden Green',       type: 'park',        center: [-220, -220],  radius: 140, density: 0.0, character: 'park' },
+    { id: 'fiera',    name: 'Fiera District',     type: 'commercial',  center: [-540, -120],  radius: 200, density: 0.75, character: 'commercial' },
+    { id: 'nord',     name: 'The Northern Ridges',type: 'residential', center: [0,   -560],   radius: 260, density: 0.5, character: 'residential' },
+    { id: 'sud',      name: 'The Southern Ridges',type: 'residential', center: [0,    560],   radius: 260, density: 0.5, character: 'residential' },
+    { id: 'est',      name: 'The Eastern Ridges', type: 'residential', center: [600,    0],   radius: 200, density: 0.5, character: 'residential' },
+    { id: 'ovest',    name: 'The Western Ridges', type: 'residential', center: [-600,   0],   radius: 200, density: 0.5, character: 'residential' }
   ];
 
   function districtAt(x, z) {
     var best = null, bestDist = Infinity;
     for (var i = 0; i < DISTRICTS.length; i++) {
       var d = DISTRICTS[i];
-      var dx = x - d.center[0];
-      var dz = z - d.center[1];
+      var dx = x - d.center[0], dz = z - d.center[1];
       var dd = dx*dx + dz*dz;
-      if (dd < d.radius * d.radius && dd < bestDist) { best = d; bestDist = dd; }
+      if (dd < d.radius*d.radius && dd < bestDist) { best = d; bestDist = dd; }
     }
     return best;
   }
 
-  var DEFAULT_CHARACTER = 'residential';
-  var DEFAULT_DISTRICT_ID = 'outskirts';
+  /* ============================================================
+     PUBLIC SPACES — parks, plazas (built first — used for skips)
+     ============================================================ */
+  var publicSpaces = [];
+  function buildPublicSpaces() {
+    publicSpaces.push({ id: 'piazza-duomo', name: 'Piazza Santino', kind: 'plaza', x: 0, z: 0, radius: 52 });
+    publicSpaces.push({ id: 'park-sempione', name: 'Linden Green', kind: 'park', x: -220, z: -220, radius: 140 });
+    publicSpaces.push({ id: 'park-nord', name: 'Northern Gardens', kind: 'park', x: 0, z: -660, radius: 110 });
+    publicSpaces.push({ id: 'park-sud', name: 'Southern Gardens', kind: 'park', x: 0, z: 660, radius: 110 });
+    publicSpaces.push({ id: 'park-fiera', name: 'Fiera Grounds', kind: 'park', x: -540, z: -120, radius: 80 });
+  }
+  buildPublicSpaces();
+
+  function inPark(x, z) {
+    for (var i = 0; i < publicSpaces.length; i++) {
+      var p = publicSpaces[i];
+      if (p.kind !== 'park') continue;
+      var dx = x - p.x, dz = z - p.z;
+      if (dx*dx + dz*dz < p.radius * p.radius) return true;
+    }
+    return false;
+  }
+
+  function nearPiazza(x, z) {
+    var p = publicSpaces[0];
+    var dx = x - p.x, dz = z - p.z;
+    return (dx*dx + dz*dz) < (p.radius + 40) * (p.radius + 40);
+  }
 
   /* ============================================================
-     STREETS — grid lines only
+     STREETS — grid + rings + radials
      ============================================================ */
   var streets = [];
   var sid = 0;
-  function makeStreet(width, points) {
-    streets.push({ id: 's' + (sid++), kind: 'grid', width: width, points: points });
+  function makeStreet(kind, width, points) {
+    streets.push({ id: 's' + (sid++), kind: kind, width: width, points: points });
   }
 
   function buildGridStreets() {
-    // Vertical grid lines (constant X) — at odd multiples of 50
-    for (var x = -850; x <= 850; x += 100) {
-      var isMajor = (x % 200 === -50 || x % 200 === 50 || x % 200 === -250 || x % 200 === 150);
-      makeStreet(isMajor ? 20 : 14, [[x, GRID.min - 40], [x, GRID.max + 40]]);
+    // Center zone grid
+    for (var x = -180; x <= 180; x += gridStepCenter) {
+      makeStreet('grid', MILAN.streetCenter, [[x, -200], [x, 200]]);
     }
-    // Horizontal grid lines (constant Z)
-    for (var z = -850; z <= 850; z += 100) {
-      var isMajor2 = (z % 200 === -50 || z % 200 === 50 || z % 200 === -250 || z % 200 === 150);
-      makeStreet(isMajor2 ? 20 : 14, [[GRID.min - 40, z], [GRID.max + 40, z]]);
+    for (var z = -180; z <= 180; z += gridStepCenter) {
+      makeStreet('grid', MILAN.streetCenter, [[-200, z], [200, z]]);
+    }
+    // Middle zone — grid
+    for (var x2 = -420; x2 <= 420; x2 += gridStepMiddle) {
+      makeStreet('grid', MILAN.streetMiddle, [[x2, -460], [x2, 460]]);
+    }
+    for (var z2 = -420; z2 <= 420; z2 += gridStepMiddle) {
+      makeStreet('grid', MILAN.streetMiddle, [[-460, z2], [460, z2]]);
+    }
+    // Outer zone — grid
+    for (var x3 = -760; x3 <= 760; x3 += gridStepOuter) {
+      makeStreet('grid', MILAN.streetOuter, [[x3, -780], [x3, 780]]);
+    }
+    for (var z3 = -760; z3 <= 760; z3 += gridStepOuter) {
+      makeStreet('grid', MILAN.streetOuter, [[-780, z3], [780, z3]]);
     }
   }
   buildGridStreets();
 
-  /* ============================================================
-     LANDMARKS — all on block centers
-     ============================================================ */
-  var LANDMARKS = [
-    { id: 'spire',      name: 'The Santinopole Spire', x: 0,    z: 0,    type: 'tower',      district: 'downtown',   h: 220 },
-    { id: 'exchange',   name: 'The Exchange',          x: -100, z: 100,  type: 'civic',      district: 'downtown',   h: 60 },
-    { id: 'webhub',     name: 'Web Hub One',           x: 400,  z: -100, type: 'creative',   district: 'web',        h: 90 },
-    { id: 'glassworks', name: 'The Glassworks',        x: 500,  z: 0,    type: 'creative',   district: 'web',        h: 70 },
-    { id: 'index',      name: 'The Index',             x: -400, z: -100, type: 'data',       district: 'seo',        h: 80 },
-    { id: 'signal',     name: 'Signal Tower',          x: -500, z: 0,    type: 'data',       district: 'seo',        h: 100 },
-    { id: 'market',     name: 'The Grand Market',      x: 0,    z: -400, type: 'commercial', district: 'growth',     h: 42 },
-    { id: 'bowl',       name: 'The Bowl',              x: 100,  z: -500, type: 'commercial', district: 'growth',     h: 50 },
-    { id: 'pier',       name: 'Pier Nine',             x: -100, z: -600, type: 'harbor',     district: 'waterfront', h: 24 },
-    { id: 'beacon',     name: 'The Beacon',            x: -200, z: -600, type: 'harbor',     district: 'waterfront', h: 40 },
-    { id: 'piazza',     name: 'Piazza Santino',        x: 0,    z: 400,  type: 'civic',      district: 'civic',      h: 44 },
-    { id: 'gallery',    name: 'The Galleria',          x: 300,  z: 400,  type: 'pavilion',   district: 'arts',       h: 22 },
-    { id: 'amphithe',   name: 'The Amphitheatre',      x: 400,  z: 500,  type: 'pavilion',   district: 'arts',       h: 18 },
-    { id: 'arcade',     name: 'The Neon Arcade',       x: -300, z: 400,  type: 'commercial', district: 'nightlife',  h: 32 },
-    { id: 'cathedral',  name: 'Chiesa di Santino',     x: -100, z: 600,  type: 'civic',      district: 'civic',      h: 66 },
-    { id: 'observat',   name: 'The Observatory',       x: -200, z: 700,  type: 'pavilion',   district: 'hills',      h: 30 },
-    { id: 'cemetery',   name: 'Cimitero dei Ricordi',  x: 300,  z: 700,  type: 'pavilion',   district: 'hills',      h: 20 },
-    { id: 'linden',     name: 'Linden Pavilion',       x: 600,  z: -300, type: 'pavilion',   district: 'parks_e',    h: 14 },
-    { id: 'ivy',        name: 'Ivy Conservatory',      x: -600, z: -300, type: 'pavilion',   district: 'parks_w',    h: 16 }
-  ];
-
-  var landmarkBlockKeys = {};
-  for (var li = 0; li < LANDMARKS.length; li++) {
-    var L = LANDMARKS[li];
-    landmarkBlockKeys[L.x + ',' + L.z] = true;
-  }
-
-  /* ============================================================
-     PUBLIC SPACES
-     ============================================================ */
-  var publicSpaces = [];
-  function buildPublicSpaces() {
-    publicSpaces.push({ id: 'piazza-core', name: 'Piazza Santino', kind: 'plaza', x: 0, z: 400, radius: 60 });
-    for (var i = 0; i < DISTRICTS.length; i++) {
-      var d = DISTRICTS[i];
-      if (d.character !== 'park') continue;
-      publicSpaces.push({
-        id: 'park-' + d.id, name: d.name, kind: 'park',
-        x: d.center[0], z: d.center[1], radius: d.radius * 0.85
-      });
+  function buildRings() {
+    var rings = [
+      { R: MILAN.ring1R },
+      { R: MILAN.ring2R }
+    ];
+    for (var r = 0; r < rings.length; r++) {
+      var R = rings[r].R, pts = [], seg = 128;
+      for (var i = 0; i <= seg; i++) {
+        var a = (i / seg) * Math.PI * 2;
+        pts.push([Math.cos(a) * R, Math.sin(a) * R]);
+      }
+      makeStreet('ring', MILAN.ringW, pts);
     }
   }
-  buildPublicSpaces();
+  buildRings();
+
+  function buildRadials() {
+    for (var k = 0; k < MILAN.numRadials; k++) {
+      var a = (k / MILAN.numRadials) * Math.PI * 2;
+      var cs = Math.cos(a), sn = Math.sin(a);
+      var pts = [];
+      for (var r = 60; r <= MILAN.outerR + 20; r += 40) {
+        pts.push([cs * r, sn * r]);
+      }
+      makeStreet('radial', MILAN.radialW, pts);
+    }
+  }
+  buildRadials();
 
   /* ============================================================
-     BUILDING TYPE PER DISTRICT CHARACTER
+     LANDMARKS — real Milan positions
      ============================================================ */
-  var MIX = {
-    financial:     ['tower', 'office', 'block'],
-    creative:      ['creative', 'block', 'office'],
-    data:          ['data', 'block', 'office'],
-    commercial:    ['commercial', 'block', 'office'],
-    harbor:        ['warehouse', 'block'],
-    civic:         ['block', 'office', 'block'],
-    residential:   ['rowhouse', 'rowhouse', 'block'],
-    cultural:      ['block', 'office', 'creative'],
-    entertainment: ['commercial', 'block', 'commercial'],
-    park:          ['pavilion']
-  };
+  var LANDMARKS = [
+    { id: 'spire',      name: 'The Santinopole Spire', x: 0,     z: 0,     type: 'civic',      district: 'centro',   h: 180 },
+    { id: 'exchange',   name: 'The Exchange',          x: 90,    z: 20,    type: 'civic',      district: 'centro',   h: 55 },
+    { id: 'piazza',     name: 'Piazza Santino',        x: 60,    z: 0,     type: 'civic',      district: 'centro',   h: 40 },
+    { id: 'cathedral',  name: 'Chiesa di Santino',     x: -100,  z: 60,    type: 'civic',      district: 'centro',   h: 80 },
+    { id: 'webhub',     name: 'Torre Nuova',           x: 240,   z: -320,  type: 'tower',      district: 'isola',    h: 160 },
+    { id: 'glassworks', name: 'Torre Vetro',           x: 340,   z: -240,  type: 'tower',      district: 'isola',    h: 130 },
+    { id: 'observat',   name: 'The Observatory',       x: 180,   z: -400,  type: 'tower',      district: 'isola',    h: 100 },
+    { id: 'index',      name: 'The Index',             x: 500,   z: -180,  type: 'data',       district: 'citta',    h: 90 },
+    { id: 'signal',     name: 'Signal Tower',          x: 580,   z: -100,  type: 'data',       district: 'citta',    h: 100 },
+    { id: 'market',     name: 'Porta Romana Gate',     x: 80,    z: 400,   type: 'commercial', district: 'romana',   h: 55 },
+    { id: 'bowl',       name: 'The Bowl',              x: -40,   z: 460,   type: 'commercial', district: 'romana',   h: 50 },
+    { id: 'pier',       name: 'Porta Genova',          x: -340,  z: 320,   type: 'pavilion',   district: 'navigli',  h: 26 },
+    { id: 'beacon',     name: 'The Beacon',            x: -440,  z: 400,   type: 'pavilion',   district: 'navigli',  h: 40 },
+    { id: 'gallery',    name: 'The Galleria',          x: 140,   z: -60,   type: 'pavilion',   district: 'moda',     h: 42 },
+    { id: 'amphithe',   name: 'The Amphitheatre',      x: 200,   z: 0,     type: 'pavilion',   district: 'moda',     h: 28 },
+    { id: 'arcade',     name: 'The Arcade',            x: -110,  z: -180,  type: 'pavilion',   district: 'brera',    h: 30 },
+    { id: 'linden',     name: 'Linden Pavilion',       x: -220,  z: -220,  type: 'pavilion',   district: 'sempione', h: 14 },
+    { id: 'cemetery',   name: 'Cimitero dei Ricordi',  x: 400,   z: 500,   type: 'pavilion',   district: 'sud',      h: 20 },
+    { id: 'ivy',        name: 'Ivy Conservatory',      x: -540,  z: -120,  type: 'pavilion',   district: 'fiera',    h: 16 }
+  ];
 
-  function pickType(character) {
-    var arr = MIX[character] || MIX.residential;
-    var r = RNG();
-    if (r < 0.55) return arr[0];
-    if (r < 0.85 && arr[1]) return arr[1];
-    return arr[2] || arr[0];
-  }
-
-  var HEIGHTS = {
-    financial:     [22, 90],
-    creative:      [18, 42],
-    data:          [20, 48],
-    commercial:    [14, 32],
-    harbor:        [10, 22],
-    civic:         [16, 32],
-    residential:   [12, 24],
-    cultural:      [14, 28],
-    entertainment: [14, 30],
-    park:          [8, 14]
-  };
-
-  function pickHeight(character) {
-    var range = HEIGHTS[character] || HEIGHTS.residential;
-    // Bias toward shorter — creates a varied skyline
-    var t = Math.pow(RNG(), 0.75);
-    return range[0] + (range[1] - range[0]) * t;
+  function nearLandmark(x, z) {
+    for (var i = 0; i < LANDMARKS.length; i++) {
+      var L = LANDMARKS[i];
+      var dx = x - L.x, dz = z - L.z;
+      if (dx*dx + dz*dz < 55*55) return true;
+    }
+    return false;
   }
 
   /* ============================================================
@@ -191,115 +212,163 @@
   var lots = [];
 
   function pushLot(x, z, w, d, h, rot, type, character, districtId) {
-    lots.push({
-      x: x, z: z,
-      w: w, d: d, h: h,
-      rot: rot,
-      type: type,
-      districtId: districtId,
-      character: character
-    });
+    lots.push({ x: x, z: z, w: w, d: d, h: h, rot: rot, type: type, districtId: districtId, character: character });
   }
 
-  /**
-   * Fill one block edge with a continuous row of buildings.
-   * startX/Z → endX/Z: the edge, walked in order.
-   * facing: 'N' | 'S' | 'E' | 'W' — which compass direction the buildings face.
-   */
-  function fillEdge(startX, startZ, endX, endZ, facing, character, districtId) {
-    var dx = endX - startX, dz = endZ - startZ;
+  var CHARACTER_BUILDINGS = {
+    financial:     ['block', 'block', 'office', 'block'],
+    creative:      ['creative', 'creative', 'block'],
+    data:          ['data', 'office', 'block'],
+    commercial:    ['block', 'block', 'commercial'],
+    harbor:        ['warehouse', 'block'],
+    civic:         ['pavilion', 'block', 'block'],
+    residential:   ['block', 'block', 'rowhouse'],
+    cultural:      ['block', 'block', 'creative'],
+    fashion:       ['block', 'block', 'block'],
+    shopping:      ['block', 'commercial', 'block'],
+    canal:         ['block', 'block', 'commercial'],
+    entertainment: ['commercial', 'block', 'block'],
+    park:          ['pavilion']
+  };
+
+  function pickType(character) {
+    var arr = CHARACTER_BUILDINGS[character] || CHARACTER_BUILDINGS.residential;
+    var r = RNG();
+    if (r < 0.62) return arr[0];
+    if (r < 0.90 && arr[1]) return arr[1];
+    return arr[2] || arr[0];
+  }
+
+  var HEIGHTS = {
+    financial:     [22, 72],
+    creative:      [20, 46],
+    data:          [22, 52],
+    commercial:    [16, 34],
+    harbor:        [12, 24],
+    civic:         [18, 34],
+    residential:   [14, 26],
+    cultural:      [16, 30],
+    fashion:       [16, 28],
+    shopping:      [14, 26],
+    canal:         [14, 26],
+    entertainment: [14, 28],
+    park:          [10, 16]
+  };
+
+  function pickHeight(character) {
+    var range = HEIGHTS[character] || HEIGHTS.residential;
+    // Mid-biased height — reads as even Milanese roofline
+    var t = 0.15 + RNG() * 0.7;
+    return range[0] + (range[1] - range[0]) * t;
+  }
+
+  // Fill one block edge with continuous street-wall buildings
+  function fillEdge(sx, sz, ex, ez, depth, character, districtId, blockSize) {
+    var dx = ex - sx, dz = ez - sz;
     var edgeLen = Math.sqrt(dx*dx + dz*dz);
-    if (edgeLen < 20) return;
+    if (edgeLen < 25) return;
 
     var ux = dx / edgeLen, uz = dz / edgeLen;
-    // Perpendicular — always points INTO the block
+    // Perpendicular pointing INTO the block (left-hand rule for clockwise walk)
     var px = -uz, pz = ux;
 
-    // Depth (how far the building extends inward)
-    var depth;
-    if (character === 'financial') depth = rand(16, 22);
-    else if (character === 'residential') depth = rand(14, 20);
-    else if (character === 'harbor') depth = rand(20, 30);
-    else if (character === 'civic') depth = rand(16, 24);
-    else depth = rand(14, 20);
+    // Rotation: buildings' width runs along the edge
+    var rot;
+    if (Math.abs(ux) > 0.7) rot = 0;                    // Edge runs E-W → rot 0
+    else if (Math.abs(uz) > 0.7) rot = Math.PI / 2;     // Edge runs N-S → rot 90°
+    else rot = Math.atan2(ux, uz);
 
-    // Rotation for buildings.js:
-    // N/S edges → width runs along X (rot = 0)
-    // E/W edges → width runs along Z (rot = PI/2)
-    var rot = (facing === 'N' || facing === 'S') ? 0 : Math.PI / 2;
-
-    // 3 or 4 buildings per edge
-    var numBuildings = 3 + Math.floor(RNG() * 2);
-    var typeA = pickType(character);
-    var typeB = pickType(character);
+    var numBuildings;
+    if (edgeLen < 70) numBuildings = 2;
+    else if (edgeLen < 100) numBuildings = 3;
+    else numBuildings = 3;
 
     for (var k = 0; k < numBuildings; k++) {
       var t0 = (k / numBuildings) * edgeLen;
       var t1 = ((k + 1) / numBuildings) * edgeLen;
-      var w = t1 - t0;
+      var w = t1 - t0 - 0.4; // tiny gap to prevent z-fighting
       var midT = (t0 + t1) / 2;
 
-      // Point on the edge (building's front-center)
-      var ex = startX + ux * midT;
-      var ez = startZ + uz * midT;
+      var ex2 = sx + ux * midT;
+      var ez2 = sz + uz * midT;
 
-      // Center of the building body (offset inward by depth/2)
-      var bx = ex + px * depth / 2;
-      var bz = ez + pz * depth / 2;
+      var bx = ex2 + px * depth / 2;
+      var bz = ez2 + pz * depth / 2;
 
       var h = pickHeight(character);
-      var type = (k === 0 || k === numBuildings - 1) ? typeA : typeB;
+      var type = pickType(character);
 
       pushLot(bx, bz, w, depth, h, rot, type, character, districtId);
     }
   }
 
-  /* ============================================================
-     BLOCK GENERATION
-     ============================================================ */
-  function generateBlocks() {
-    for (var cx = GRID.min; cx <= GRID.max; cx += GRID.step) {
-      for (var cz = GRID.min; cz <= GRID.max; cz += GRID.step) {
+  function fillBlock(cx, cz, blockSize, district) {
+    var half = blockSize / 2;
 
-        // Bay skip — block must be entirely on land
-        if (cz - GRID.halfBlock < GRID.bayEdgeZ + 5) continue;
+    // Skip if the block is too far into the bay
+    if (cz - half < -720) return;
 
-        // Landmark block — skip, landmark will render there
-        if (landmarkBlockKeys[cx + ',' + cz]) continue;
+    if (nearLandmark(cx, cz)) return;
+    if (nearPiazza(cx, cz)) return;
+    if (inPark(cx, cz)) return;
 
-        var district = districtAt(cx, cz);
+    // Skip if block center is on a ring
+    var r = Math.sqrt(cx*cx + cz*cz);
+    var ringTol = half + MILAN.ringW / 2 + 4;
+    if (Math.abs(r - MILAN.ring1R) < ringTol) return;
+    if (Math.abs(r - MILAN.ring2R) < ringTol) return;
 
-        // Park districts — no buildings, the block becomes lawn
-        if (district && district.character === 'park') continue;
+    // Skip if block center is on a radial
+    if (r > 50) {
+      var angle = Math.atan2(cz, cx);
+      var step = (Math.PI * 2) / MILAN.numRadials;
+      var offset = Math.round(angle / step) * step;
+      var nx = Math.cos(offset), nz = Math.sin(offset);
+      var perpDist = Math.abs(-nz * cx + nx * cz);
+      if (perpDist < half + MILAN.radialW / 2 + 4) return;
+    }
 
-        // Hills — sparse (some blocks empty)
-        if (district && district.character === 'residential' && cz > GRID.hillStartZ) {
-          if (RNG() < 0.45) continue;
-        }
+    var character = district ? district.character : 'residential';
+    var districtId = district ? district.id : 'outskirts';
+    var depth = Math.min(MILAN.buildingDepth, blockSize * 0.28);
 
-        var character = district ? district.character : DEFAULT_CHARACTER;
-        var districtId = district ? district.id : DEFAULT_DISTRICT_ID;
+    // Walk clockwise around the block; each edge gets a continuous row of buildings
+    fillEdge(cx - half, cz - half, cx + half, cz - half, depth, character, districtId, blockSize); // N
+    fillEdge(cx + half, cz - half, cx + half, cz + half, depth, character, districtId, blockSize); // E
+    fillEdge(cx + half, cz + half, cx - half, cz + half, depth, character, districtId, blockSize); // S
+    fillEdge(cx - half, cz + half, cx - half, cz - half, depth, character, districtId, blockSize); // W
+  }
 
-        var h = GRID.halfBlock;
-
-        // N edge — from (cx-h, cz-h) to (cx+h, cz-h), facing north
-        fillEdge(cx - h, cz - h, cx + h, cz - h, 'N', character, districtId);
-
-        // S edge — from (cx+h, cz+h) to (cx-h, cz+h), facing south
-        fillEdge(cx + h, cz + h, cx - h, cz + h, 'S', character, districtId);
-
-        // E edge — from (cx+h, cz-h) to (cx+h, cz+h), facing east
-        fillEdge(cx + h, cz - h, cx + h, cz + h, 'E', character, districtId);
-
-        // W edge — from (cx-h, cz+h) to (cx-h, cz-h), facing west
-        fillEdge(cx - h, cz + h, cx - h, cz - h, 'W', character, districtId);
+  function generateAllLots() {
+    // Center zone
+    for (var x = -180; x <= 180; x += gridStepCenter) {
+      for (var z = -180; z <= 180; z += gridStepCenter) {
+        fillBlock(x, z, MILAN.blockCenter, districtAt(x, z));
+      }
+    }
+    // Middle zone
+    for (var x2 = -440; x2 <= 440; x2 += gridStepMiddle) {
+      for (var z2 = -440; z2 <= 440; z2 += gridStepMiddle) {
+        var rr = Math.sqrt(x2*x2 + z2*z2);
+        if (rr < 200) continue;
+        fillBlock(x2, z2, MILAN.blockMiddle, districtAt(x2, z2));
+      }
+    }
+    // Outer zone
+    for (var x3 = -780; x3 <= 780; x3 += gridStepOuter) {
+      for (var z3 = -780; z3 <= 780; z3 += gridStepOuter) {
+        var rr2 = Math.sqrt(x3*x3 + z3*z3);
+        if (rr2 < 420 || rr2 > MILAN.outerR) continue;
+        // Sparser outside the bastioni
+        if (RNG() < 0.35) continue;
+        fillBlock(x3, z3, MILAN.blockOuter, districtAt(x3, z3));
       }
     }
   }
-  generateBlocks();
+  generateAllLots();
 
   /* ============================================================
-     BUDGET — keep lots closest to the origin if over limit
+     BUDGET
      ============================================================ */
   var maxTotal = Q.buildingsNear + Q.buildingsMid + Q.buildingsFar;
   if (lots.length > maxTotal) {
@@ -310,89 +379,45 @@
   }
 
   /* ============================================================
-     TRANSIT — trains run along grid streets
+     TRANSIT — tram lines on the rings and radials
      ============================================================ */
   var transit = { lines: [], stations: [] };
   function buildTransit() {
-    transit.lines.push({
-      id: 'line-1', name: 'The Meridian', color: '#d4a24a',
-      points: [[50, 850], [50, -650]]
-    });
-    transit.lines.push({
-      id: 'line-2', name: 'The Cross', color: '#5a9bd4',
-      points: [[-850, 50], [850, 50]]
-    });
-    transit.lines.push({
-      id: 'line-3', name: 'The Loop', color: '#c96b5a',
-      points: [[350, 350], [350, -350], [-350, -350], [-350, 350], [350, 350]]
-    });
+    // Cerchia tram (inner ring)
+    var ring1Pts = [];
+    for (var i = 0; i <= 64; i++) {
+      var a = (i / 64) * Math.PI * 2;
+      ring1Pts.push([Math.cos(a) * MILAN.ring1R, Math.sin(a) * MILAN.ring1R]);
+    }
+    transit.lines.push({ id: 'tram-inner', name: 'Cerchia Tram', color: '#d4a24a', points: ring1Pts });
+
+    // Bastioni tram (outer ring)
+    var ring2Pts = [];
+    for (var j = 0; j <= 64; j++) {
+      var a2 = (j / 64) * Math.PI * 2;
+      ring2Pts.push([Math.cos(a2) * MILAN.ring2R, Math.sin(a2) * MILAN.ring2R]);
+    }
+    transit.lines.push({ id: 'tram-outer', name: 'Bastioni Tram', color: '#c96b5a', points: ring2Pts });
+
+    // E-W tram (decumanus — through the Duomo)
+    transit.lines.push({ id: 'tram-ew', name: 'Decumano', color: '#5a9bd4',
+      points: [[-760, 0], [760, 0]] });
+
+    // N-S tram (cardo — through the Duomo)
+    transit.lines.push({ id: 'tram-ns', name: 'Cardo', color: '#5a9bd4',
+      points: [[0, -760], [0, 760]] });
+
     var sp = [
-      { x: 50,   z: 400,  name: 'Chiesa',        district: 'civic' },
-      { x: 50,   z: 0,    name: 'Spine Central', district: 'downtown' },
-      { x: 50,   z: -400, name: 'Growth Gate',   district: 'growth' },
-      { x: 50,   z: -600, name: 'Pier Nine',     district: 'waterfront' },
-      { x: -400, z: 50,   name: 'Index East',    district: 'seo' },
-      { x: 400,  z: 50,   name: 'Web Hub',       district: 'web' },
-      { x: 350,  z: 350,  name: 'Atelier',       district: 'arts' },
-      { x: -350, z: 350,  name: 'Neon',          district: 'nightlife' }
+      { x: 0,     z: 0,     name: 'Duomo',         district: 'centro'   },
+      { x: 220,   z: 0,     name: 'Porta Venezia', district: 'corso'    },
+      { x: -220,  z: 0,     name: 'Porta Genova',  district: 'navigli'  },
+      { x: 0,     z: -220,  name: 'Porta Nuova',   district: 'isola'    },
+      { x: 0,     z: 220,   name: 'Porta Romana',  district: 'romana'   },
+      { x: 460,   z: 0,     name: 'Città Studi',   district: 'citta'    },
+      { x: -460,  z: 0,     name: 'Fiera',         district: 'fiera'    },
+      { x: 140,   z: -60,   name: 'Montenapoleone',district: 'moda'     },
+      { x: -110,  z: -180,  name: 'Brera',         district: 'brera'    },
+      { x: -340,  z: 320,   name: 'Navigli',       district: 'navigli'  }
     ];
-    for (var i = 0; i < sp.length; i++) {
-      transit.stations.push({ id: 'st-' + i, name: sp[i].name, x: sp[i].x, z: sp[i].z, district: sp[i].district });
-    }
-  }
-  buildTransit();
-
-  /* ============================================================
-     BOUNDARY
-     ============================================================ */
-  function computeBoundary() {
-    var h = 900, pts = [], seg = 64;
-    for (var i = 0; i < seg; i++) {
-      var a = (i / seg) * Math.PI * 2;
-      var x = Math.cos(a) * h * 0.9;
-      var z = Math.sin(a) * h * 0.9;
-      if (z < GRID.bayEdgeZ) z = GRID.bayEdgeZ;
-      pts.push([x, z]);
-    }
-    return pts;
-  }
-  var boundary = computeBoundary();
-
-  /* ============================================================
-     EXPORT
-     ============================================================ */
-  S.city = {
-    boundary: boundary,
-    bay: { edgeZ: GRID.bayEdgeZ, promenadeZ: GRID.bayEdgeZ + 40, width: 2000 },
-    hills: { startZ: GRID.hillStartZ, peakZ: 1000, maxHeight: 140 },
-    districts: DISTRICTS.map(function (d) {
-      return { id: d.id, name: d.name, type: d.type, character: d.character,
-               center: d.center.slice(), radius: d.radius, density: d.density };
-    }),
-    streets: streets,
-    lots: lots,
-    landmarks: LANDMARKS,
-    publicSpaces: publicSpaces,
-    transit: transit,
-    constants: { streetWidth: GRID.streetW, halfSize: 900, gridStep: GRID.step },
-    helpers: { districtAt: districtAt, random: RNG },
-    stats: {
-      districtCount: DISTRICTS.length,
-      streetCount: streets.length,
-      lotCount: lots.length,
-      landmarkCount: LANDMARKS.length,
-      spaceCount: publicSpaces.length,
-      transitLines: transit.lines.length,
-      transitStations: transit.stations.length
-    }
-  };
-
-  S.log(
-    'city',
-    true,
-    DISTRICTS.length + ' districts · ' +
-    streets.length + ' streets · ' +
-    lots.length + ' lots (grid-planned)'
-  );
-
-})();
+    for (var k = 0; k < sp.length; k++) {
+      transit.stations.push({ id: 'st-' + k
