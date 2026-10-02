@@ -1,108 +1,53 @@
-/* =========================================================
-   SANTINOPOLE DIGITAL
-   THREE.JS — CORE 3D ENGINE
-   ========================================================= */
-
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js";
 
-/* =========================================================
-   ENGINE
-   ========================================================= */
-
 class SantinopoleEngine {
-  constructor() {
-    this.canvas = document.querySelector("#scene-canvas");
+  constructor(options = {}) {
+    this.canvas =
+      options.canvas ||
+      document.querySelector("#scene-canvas");
 
     if (!this.canvas) {
       throw new Error(
-        "[SANTINOPOLE] #scene-canvas was not found."
+        "SANTINOPOLE: #scene-canvas was not found."
       );
     }
 
-    this.scene = null;
-    this.camera = null;
-    this.renderer = null;
-    this.clock = new THREE.Clock();
-
-    this.viewport = {
-      width: window.innerWidth,
-      height: window.innerHeight,
-      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
-    };
-
-    this.state = {
-      ready: false,
-      destroyed: false,
-      elapsed: 0,
-      delta: 0,
-    };
-
     this.events = new THREE.EventDispatcher();
 
-    this.init();
-  }
+    this.state = {
+      running: false,
+      visible: !document.hidden,
+      width: window.innerWidth,
+      height: window.innerHeight,
+      pixelRatio: 1,
+      frame: 0,
+      fps: 60,
+      delta: 0,
+      elapsed: 0
+    };
 
-  /* =======================================================
-     INITIALIZATION
-  ======================================================== */
+    this.clock = new THREE.Clock();
 
-  init() {
-    this.createScene();
-    this.createCamera();
-    this.createRenderer();
-    this.configureRenderer();
-    this.createLighting();
-    this.createAtmosphere();
-    this.bindEvents();
+    this.maxDelta = 1 / 30;
 
-    this.state.ready = true;
-
-    this.events.dispatchEvent({
-      type: "ready",
-      engine: this,
-    });
-
-    this.render();
-  }
-
-  /* =======================================================
-     SCENE
-  ======================================================== */
-
-  createScene() {
     this.scene = new THREE.Scene();
 
-    this.scene.background = new THREE.Color(0x050505);
+    this.scene.background =
+      new THREE.Color(0x07090c);
 
     this.scene.fog = new THREE.FogExp2(
-      0x050505,
-      0.0022
-    );
-  }
-
-  /* =======================================================
-     CAMERA
-  ======================================================== */
-
-  createCamera() {
-    const aspect =
-      this.viewport.width /
-      this.viewport.height;
-
-    this.camera = new THREE.PerspectiveCamera(
-      45,
-      aspect,
-      0.1,
-      5000
+      0x07090c,
+      0.00072
     );
 
-    /*
-      Initial cinematic position.
-
-      This is deliberately high and distant.
-      ScrollExperience will eventually take
-      complete control of this camera.
-    */
+    this.camera =
+      new THREE.PerspectiveCamera(
+        48,
+        this.state.width /
+          this.state.height,
+        0.1,
+        5000
+      );
 
     this.camera.position.set(
       0,
@@ -112,148 +57,316 @@ class SantinopoleEngine {
 
     this.camera.lookAt(
       0,
-      0,
+      80,
       0
     );
-  }
 
-  /* =======================================================
-     RENDERER
-  ======================================================== */
+    this.renderer =
+      this.createRenderer();
 
-  createRenderer() {
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: this.canvas,
+    this.setupLighting();
+    this.setupAtmosphere();
 
-      antialias: true,
+    this.handleResize =
+      this.handleResize.bind(this);
 
-      alpha: false,
+    this.handleVisibility =
+      this.handleVisibility.bind(this);
 
-      powerPreference: "high-performance",
+    this.render =
+      this.render.bind(this);
 
-      logarithmicDepthBuffer: false,
+    window.addEventListener(
+      "resize",
+      this.handleResize,
+      { passive: true }
+    );
 
-      stencil: false,
+    document.addEventListener(
+      "visibilitychange",
+      this.handleVisibility
+    );
 
-      depth: true,
+    this.resize();
+
+    this.state.running = true;
+
+    requestAnimationFrame(
+      this.render
+    );
+
+    this.events.dispatchEvent({
+      type: "ready",
+      engine: this
     });
   }
 
-  configureRenderer() {
-    const {
-      width,
-      height,
-      pixelRatio,
-    } = this.viewport;
+  /* ------------------------------------------------------------------------
+     RENDERER
+  ------------------------------------------------------------------------ */
 
-    this.renderer.setPixelRatio(
-      pixelRatio
-    );
+  createRenderer() {
+    const renderer =
+      new THREE.WebGLRenderer({
+        canvas: this.canvas,
+        antialias: true,
+        alpha: false,
+        powerPreference: "high-performance",
+        stencil: false,
+        depth: true
+      });
 
-    this.renderer.setSize(
-      width,
-      height,
-      false
-    );
-
-    this.renderer.outputColorSpace =
+    renderer.outputColorSpace =
       THREE.SRGBColorSpace;
 
-    this.renderer.toneMapping =
+    renderer.toneMapping =
       THREE.ACESFilmicToneMapping;
 
-    this.renderer.toneMappingExposure =
-      1.15;
+    renderer.toneMappingExposure = 1.05;
 
-    this.renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = true;
 
-    this.renderer.shadowMap.type =
+    renderer.shadowMap.type =
       THREE.PCFSoftShadowMap;
+
+    renderer.setPixelRatio(
+      this.getPixelRatio()
+    );
+
+    return renderer;
   }
 
-  /* =======================================================
+  getPixelRatio() {
+    const deviceRatio =
+      window.devicePixelRatio || 1;
+
+    const mobile =
+      window.innerWidth < 768;
+
+    const tablet =
+      window.innerWidth >= 768 &&
+      window.innerWidth < 1200;
+
+    let cap = 2;
+
+    if (mobile) {
+      cap = 1.5;
+    } else if (tablet) {
+      cap = 1.75;
+    }
+
+    return Math.min(
+      deviceRatio,
+      cap
+    );
+  }
+
+  /* ------------------------------------------------------------------------
      LIGHTING
-  ======================================================== */
+  ------------------------------------------------------------------------ */
 
-  createLighting() {
-    /*
-      The first lighting system is intentionally
-      restrained.
+  setupLighting() {
+    this.hemiLight =
+      new THREE.HemisphereLight(
+        0xb9cad4,
+        0x101216,
+        1.35
+      );
 
-      We will later move toward:
-      - district-specific lighting
-      - emissive architecture
-      - street lighting
-      - window illumination
-      - animated advertisements
-      - atmospheric light shafts
-    */
+    this.hemiLight.name =
+      "CITY_HEMISPHERE_LIGHT";
 
-    const ambient = new THREE.HemisphereLight(
-      0xd9e1ea,
-      0x101010,
-      1.15
+    this.scene.add(
+      this.hemiLight
     );
 
-    this.scene.add(ambient);
+    this.sunLight =
+      new THREE.DirectionalLight(
+        0xd8e2e7,
+        2.6
+      );
 
-    const key = new THREE.DirectionalLight(
-      0xffffff,
-      2.8
+    this.sunLight.name =
+      "CITY_SUN_LIGHT";
+
+    this.sunLight.position.set(
+      -420,
+      760,
+      280
     );
 
-    key.position.set(
-      -180,
-      320,
-      140
-    );
+    this.sunLight.castShadow = true;
 
-    key.castShadow = true;
-
-    key.shadow.mapSize.set(
+    this.sunLight.shadow.mapSize.set(
       2048,
       2048
     );
 
-    key.shadow.camera.near = 10;
-    key.shadow.camera.far = 1000;
+    this.sunLight.shadow.camera.near =
+      10;
 
-    key.shadow.camera.left = -450;
-    key.shadow.camera.right = 450;
-    key.shadow.camera.top = 450;
-    key.shadow.camera.bottom = -450;
+    this.sunLight.shadow.camera.far =
+      1800;
 
-    key.shadow.bias = -0.00015;
+    this.sunLight.shadow.camera.left =
+      -700;
 
-    this.scene.add(key);
+    this.sunLight.shadow.camera.right =
+      700;
 
-    this.keyLight = key;
+    this.sunLight.shadow.camera.top =
+      700;
+
+    this.sunLight.shadow.camera.bottom =
+      -700;
+
+    this.sunLight.shadow.bias =
+      -0.00015;
+
+    this.sunLight.shadow.normalBias =
+      0.025;
+
+    this.scene.add(
+      this.sunLight
+    );
+
+    this.fillLight =
+      new THREE.DirectionalLight(
+        0x71899a,
+        0.42
+      );
+
+    this.fillLight.position.set(
+      500,
+      280,
+      -500
+    );
+
+    this.scene.add(
+      this.fillLight
+    );
   }
 
-  /* =======================================================
+  /* ------------------------------------------------------------------------
      ATMOSPHERE
-  ======================================================== */
+  ------------------------------------------------------------------------ */
 
-  createAtmosphere() {
-    /*
-      Very large atmospheric plane.
-
-      This isn't the final sky system.
-      It establishes depth until our procedural
-      atmosphere arrives.
-    */
-
+  setupAtmosphere() {
     const geometry =
       new THREE.SphereGeometry(
-        2400,
+        1800,
         32,
         16
       );
 
     const material =
-      new THREE.MeshBasicMaterial({
-        color: 0x07090d,
+      new THREE.ShaderMaterial({
         side: THREE.BackSide,
+        depthWrite: false,
+
+        uniforms: {
+          topColor: {
+            value:
+              new THREE.Color(
+                0x111922
+              )
+          },
+
+          horizonColor: {
+            value:
+              new THREE.Color(
+                0x27333c
+              )
+          },
+
+          bottomColor: {
+            value:
+              new THREE.Color(
+                0x07090c
+              )
+          },
+
+          offset: {
+            value: 0.08
+          },
+
+          exponent: {
+            value: 0.72
+          }
+        },
+
+        vertexShader: `
+          varying vec3 vWorldPosition;
+
+          void main() {
+            vec4 worldPosition =
+              modelMatrix *
+              vec4(position, 1.0);
+
+            vWorldPosition =
+              worldPosition.xyz;
+
+            gl_Position =
+              projectionMatrix *
+              viewMatrix *
+              worldPosition;
+          }
+        `,
+
+        fragmentShader: `
+          uniform vec3 topColor;
+          uniform vec3 horizonColor;
+          uniform vec3 bottomColor;
+
+          uniform float offset;
+          uniform float exponent;
+
+          varying vec3 vWorldPosition;
+
+          void main() {
+            float h =
+              normalize(
+                vWorldPosition
+              ).y;
+
+            float upper =
+              smoothstep(
+                offset,
+                1.0,
+                max(h, 0.0)
+              );
+
+            float lower =
+              smoothstep(
+                -0.35,
+                offset,
+                h
+              );
+
+            vec3 upperColor =
+              mix(
+                horizonColor,
+                topColor,
+                pow(
+                  upper,
+                  exponent
+                )
+              );
+
+            vec3 finalColor =
+              mix(
+                bottomColor,
+                upperColor,
+                lower
+              );
+
+            gl_FragColor =
+              vec4(
+                finalColor,
+                1.0
+              );
+          }
+        `
       });
 
     this.atmosphere =
@@ -262,127 +375,59 @@ class SantinopoleEngine {
         material
       );
 
+    this.atmosphere.name =
+      "CITY_ATMOSPHERE";
+
+    this.atmosphere.frustumCulled =
+      false;
+
     this.scene.add(
       this.atmosphere
     );
   }
 
-  /* =======================================================
-     RESIZE
-  ======================================================== */
-
-  resize() {
-    if (
-      !this.renderer ||
-      !this.camera
-    ) {
-      return;
-    }
-
-    this.viewport.width =
-      window.innerWidth;
-
-    this.viewport.height =
-      window.innerHeight;
-
-    this.viewport.pixelRatio =
-      Math.min(
-        window.devicePixelRatio || 1,
-        2
-      );
-
-    this.camera.aspect =
-      this.viewport.width /
-      this.viewport.height;
-
-    this.camera.updateProjectionMatrix();
-
-    this.renderer.setPixelRatio(
-      this.viewport.pixelRatio
-    );
-
-    this.renderer.setSize(
-      this.viewport.width,
-      this.viewport.height,
-      false
-    );
-
-    this.events.dispatchEvent({
-      type: "resize",
-      viewport: this.viewport,
-    });
-  }
-
-  /* =======================================================
-     EVENTS
-  ======================================================== */
-
-  bindEvents() {
-    this.handleResize =
-      this.resize.bind(this);
-
-    window.addEventListener(
-      "resize",
-      this.handleResize,
-      {
-        passive: true,
-      }
-    );
-  }
-
-  /* =======================================================
-     UPDATE
-  ======================================================== */
-
-  update() {
-    if (
-      !this.state.ready ||
-      this.state.destroyed
-    ) {
-      return;
-    }
-
-    this.state.delta =
-      this.clock.getDelta();
-
-    this.state.elapsed +=
-      this.state.delta;
-
-    /*
-      Subtle atmospheric movement.
-
-      This gives the scene life even before
-      buildings, traffic and citizens arrive.
-    */
-
-    if (this.atmosphere) {
-      this.atmosphere.rotation.y +=
-        this.state.delta * 0.002;
-    }
-
-    this.events.dispatchEvent({
-      type: "update",
-      delta: this.state.delta,
-      elapsed: this.state.elapsed,
-    });
-  }
-
-  /* =======================================================
-     RENDER LOOP
-  ======================================================== */
+  /* ------------------------------------------------------------------------
+     LOOP
+  ------------------------------------------------------------------------ */
 
   render() {
-    if (
-      this.state.destroyed
-    ) {
+    if (!this.state.running) {
       return;
     }
 
     requestAnimationFrame(
-      () => this.render()
+      this.render
     );
 
-    this.update();
+    if (!this.state.visible) {
+      return;
+    }
+
+    const rawDelta =
+      this.clock.getDelta();
+
+    const delta =
+      Math.min(
+        rawDelta,
+        this.maxDelta
+      );
+
+    this.state.delta = delta;
+
+    this.state.elapsed += delta;
+
+    this.state.frame++;
+
+    this.updateFPS(delta);
+
+    this.events.dispatchEvent({
+      type: "update",
+      delta,
+      elapsed:
+        this.state.elapsed,
+      frame:
+        this.state.frame
+    });
 
     this.renderer.render(
       this.scene,
@@ -390,25 +435,180 @@ class SantinopoleEngine {
     );
   }
 
-  /* =======================================================
+  updateFPS(delta) {
+    if (delta <= 0) return;
+
+    const instantFPS =
+      1 / delta;
+
+    this.state.fps +=
+      (instantFPS -
+        this.state.fps) *
+      0.04;
+  }
+
+  /* ------------------------------------------------------------------------
+     RESIZE
+  ------------------------------------------------------------------------ */
+
+  handleResize() {
+    this.resize();
+  }
+
+  resize(width, height) {
+    const nextWidth =
+      width ||
+      window.innerWidth;
+
+    const nextHeight =
+      height ||
+      window.innerHeight;
+
+    if (
+      nextWidth <= 0 ||
+      nextHeight <= 0
+    ) {
+      return;
+    }
+
+    this.state.width =
+      nextWidth;
+
+    this.state.height =
+      nextHeight;
+
+    this.state.pixelRatio =
+      this.getPixelRatio();
+
+    this.camera.aspect =
+      nextWidth /
+      nextHeight;
+
+    this.camera.updateProjectionMatrix();
+
+    this.renderer.setPixelRatio(
+      this.state.pixelRatio
+    );
+
+    this.renderer.setSize(
+      nextWidth,
+      nextHeight,
+      false
+    );
+
+    this.events.dispatchEvent({
+      type: "resize",
+      width: nextWidth,
+      height: nextHeight,
+      pixelRatio:
+        this.state.pixelRatio
+    });
+  }
+
+  /* ------------------------------------------------------------------------
+     VISIBILITY
+  ------------------------------------------------------------------------ */
+
+  handleVisibility() {
+    const visible =
+      !document.hidden;
+
+    this.state.visible =
+      visible;
+
+    /*
+      Reset the clock when returning
+      to the tab so the scene does not
+      receive one giant delta.
+    */
+
+    if (visible) {
+      this.clock.start();
+    }
+
+    this.events.dispatchEvent({
+      type: "visibility",
+      visible
+    });
+  }
+
+  /* ------------------------------------------------------------------------
+     QUALITY
+  ------------------------------------------------------------------------ */
+
+  setQuality(tier = "high") {
+    const settings = {
+      high: {
+        pixelRatio: Math.min(
+          window.devicePixelRatio || 1,
+          2
+        ),
+        shadowMap: 2048,
+        shadows: true,
+        exposure: 1.05
+      },
+
+      medium: {
+        pixelRatio: Math.min(
+          window.devicePixelRatio || 1,
+          1.5
+        ),
+        shadowMap: 1024,
+        shadows: true,
+        exposure: 1.0
+      },
+
+      low: {
+        pixelRatio: Math.min(
+          window.devicePixelRatio || 1,
+          1.15
+        ),
+        shadowMap: 512,
+        shadows: false,
+        exposure: 0.95
+      }
+    };
+
+    const config =
+      settings[tier] ||
+      settings.high;
+
+    this.renderer.setPixelRatio(
+      config.pixelRatio
+    );
+
+    this.renderer.shadowMap.enabled =
+      config.shadows;
+
+    this.sunLight.castShadow =
+      config.shadows;
+
+    this.sunLight.shadow.mapSize.set(
+      config.shadowMap,
+      config.shadowMap
+    );
+
+    this.renderer.toneMappingExposure =
+      config.exposure;
+
+    this.state.pixelRatio =
+      config.pixelRatio;
+
+    this.state.quality =
+      tier;
+
+    this.resize();
+
+    this.events.dispatchEvent({
+      type: "quality",
+      tier,
+      config
+    });
+  }
+
+  /* ------------------------------------------------------------------------
      PUBLIC API
-  ======================================================== */
-
-  add(object) {
-    if (!object) {
-      return;
-    }
-
-    this.scene.add(object);
-  }
-
-  remove(object) {
-    if (!object) {
-      return;
-    }
-
-    this.scene.remove(object);
-  }
+  ------------------------------------------------------------------------ */
 
   getScene() {
     return this.scene;
@@ -427,7 +627,23 @@ class SantinopoleEngine {
   }
 
   getState() {
-    return this.state;
+    return {
+      ...this.state
+    };
+  }
+
+  add(object) {
+    if (object) {
+      this.scene.add(object);
+    }
+
+    return object;
+  }
+
+  remove(object) {
+    if (object) {
+      this.scene.remove(object);
+    }
   }
 
   on(type, callback) {
@@ -444,33 +660,34 @@ class SantinopoleEngine {
     );
   }
 
-  /* =======================================================
-     CLEANUP
-  ======================================================== */
+  /* ------------------------------------------------------------------------
+     DESTROY
+  ------------------------------------------------------------------------ */
 
   destroy() {
-    this.state.destroyed = true;
+    if (!this.state.running) {
+      return;
+    }
+
+    this.state.running = false;
 
     window.removeEventListener(
       "resize",
       this.handleResize
     );
 
-    if (this.renderer) {
-      this.renderer.dispose();
-    }
+    document.removeEventListener(
+      "visibilitychange",
+      this.handleVisibility
+    );
 
-    this.scene?.traverse(
+    this.scene.traverse(
       (object) => {
-        if (
-          object.geometry
-        ) {
+        if (object.geometry) {
           object.geometry.dispose();
         }
 
-        if (
-          object.material
-        ) {
+        if (object.material) {
           const materials =
             Array.isArray(
               object.material
@@ -480,6 +697,22 @@ class SantinopoleEngine {
 
           materials.forEach(
             (material) => {
+              if (material.map) {
+                material.map.dispose();
+              }
+
+              if (material.normalMap) {
+                material.normalMap.dispose();
+              }
+
+              if (material.roughnessMap) {
+                material.roughnessMap.dispose();
+              }
+
+              if (material.metalnessMap) {
+                material.metalnessMap.dispose();
+              }
+
               material.dispose();
             }
           );
@@ -487,19 +720,22 @@ class SantinopoleEngine {
       }
     );
 
+    this.renderer.dispose();
+
+    this.renderer.forceContextLoss?.();
+
     this.events.dispatchEvent({
-      type: "destroy",
+      type: "destroy"
     });
+
+    this.events =
+      new THREE.EventDispatcher();
   }
 }
 
-/* =========================================================
-   EXPORT
-   ========================================================= */
-
 export {
   THREE,
-  SantinopoleEngine,
+  SantinopoleEngine
 };
 
 export default SantinopoleEngine;
