@@ -12,62 +12,44 @@ class SantinopoleApp {
     this.interface = null;
 
     this.ready = false;
-    this.booted = false;
-    this.destroyed = false;
-
-    this.progress = 0;
 
     this.boot();
   }
 
-  /* ------------------------------------------------------------------------
-     BOOT
-  ------------------------------------------------------------------------ */
-
   async boot() {
-    if (this.booted || this.destroyed) {
-      return;
-    }
-
-    this.booted = true;
-
     try {
-      this.setLoader(
-        0.04,
-        "INITIALIZING SANTINOPOLE"
-      );
+      this.setLoader(0.1, "INITIALIZING SANTINOPOLE");
 
-      await this.waitFrame();
+      const canvas =
+        document.querySelector("#scene-canvas");
 
-      if (!this.supportsWebGL()) {
-        this.showFallback(
-          "WebGL is unavailable on this device."
+      if (!canvas) {
+        throw new Error(
+          "SANTINOPOLE: #scene-canvas not found."
         );
+      }
 
+      if (!this.supportsWebGL(canvas)) {
+        this.showFallback();
         return;
       }
 
       this.setLoader(
-        0.12,
-        "CALIBRATING CITY ENGINE"
+        0.25,
+        "STARTING CITY ENGINE"
       );
 
       this.engine =
         new SantinopoleEngine({
-          canvas:
-            document.querySelector(
-              "#scene-canvas"
-            )
+          canvas
         });
 
-      this.connectEngineEvents();
+      await this.nextFrame();
 
       this.setLoader(
-        0.28,
+        0.45,
         "BUILDING THE METROPOLIS"
       );
-
-      await this.waitFrame();
 
       this.city =
         new City(
@@ -75,12 +57,12 @@ class SantinopoleApp {
           performance
         );
 
-      this.setLoader(
-        0.52,
-        "ACTIVATING SANTINOPOLITANS"
-      );
+      await this.nextFrame();
 
-      await this.waitFrame();
+      this.setLoader(
+        0.7,
+        "CALIBRATING CINEMATIC CAMERA"
+      );
 
       this.scroll =
         new ScrollExperience(
@@ -89,12 +71,12 @@ class SantinopoleApp {
           performance
         );
 
-      this.setLoader(
-        0.72,
-        "CALIBRATING CITY NAVIGATION"
-      );
+      await this.nextFrame();
 
-      await this.waitFrame();
+      this.setLoader(
+        0.88,
+        "CONNECTING CITY NAVIGATION"
+      );
 
       this.interface =
         new Interface(
@@ -104,115 +86,73 @@ class SantinopoleApp {
           performance
         );
 
-      this.setLoader(
-        0.88,
-        "CONNECTING THE CITY"
-      );
-
-      this.connectSystems();
-
-      await this.waitFrame();
+      this.connectQuality();
 
       this.setLoader(
         1,
         "WELCOME TO SANTINOPOLE"
       );
 
-      this.reveal();
+      await this.nextFrame();
+
+      this.hideLoader();
 
       this.ready = true;
 
       window.dispatchEvent(
         new CustomEvent(
-          "santinopole:ready",
-          {
-            detail: {
-              app: this
-            }
-          }
+          "santinopole:ready"
         )
       );
+
+      console.log(
+        "%c SANTINOPOLE DIGITAL ",
+        "background:#111;color:#fff;padding:8px 14px;font-weight:700;"
+      );
+
+      console.log(
+        "%c WEB • SEO • GROWTH ",
+        "color:#8998a3;font-weight:600;"
+      );
+
     } catch (error) {
       console.error(
-        "[SANTINOPOLE]",
+        "SANTINOPOLE BOOT ERROR:",
         error
       );
 
-      this.handleBootFailure(error);
+      this.showFallback(
+        error.message
+      );
     }
   }
 
-  /* ------------------------------------------------------------------------
-     ENGINE EVENTS
-  ------------------------------------------------------------------------ */
-
-  connectEngineEvents() {
-    if (!this.engine) return;
-
-    this.engine.on(
-      "ready",
-      () => {
-        this.eventsReady = true;
-      }
-    );
-
-    this.engine.on(
-      "resize",
-      ({ width, height }) => {
-        this.city?.resize(
-          width,
-          height
-        );
-
-        this.scroll?.resize(
-          width,
-          height
-        );
-
-        this.interface?.resize(
-          width,
-          height
-        );
-      }
-    );
+  supportsWebGL(canvas) {
+    try {
+      return Boolean(
+        canvas.getContext("webgl2") ||
+        canvas.getContext("webgl")
+      );
+    } catch {
+      return false;
+    }
   }
 
-  /* ------------------------------------------------------------------------
-     SYSTEM CONNECTION
-  ------------------------------------------------------------------------ */
-
-  connectSystems() {
-    this.qualityHandler =
-      ({ detail }) => {
-        if (!detail?.tier) return;
-
-        this.engine?.setQuality(
-          detail.tier
-        );
-
-        this.city?.setQuality(
-          detail.tier
-        );
-
-        this.scroll?.setQuality(
-          detail.tier
-        );
-
-        this.interface?.setQuality(
-          detail.tier
-        );
-      };
-
+  connectQuality() {
     window.addEventListener(
       "santinopole:quality",
-      this.qualityHandler
-    );
+      (event) => {
+        const tier =
+          event.detail?.tier;
 
-    /*
-      Apply the current quality state
-      immediately rather than waiting for
-      the performance monitor to change tier.
-    */
+        if (!tier) return;
+
+        this.engine?.setQuality(tier);
+        this.city?.setQuality(tier);
+        this.scroll?.setQuality(tier);
+        this.interface?.setQuality(tier);
+      }
+    );
 
     const tier =
       performance.getTier?.() ||
@@ -224,31 +164,16 @@ class SantinopoleApp {
     this.interface?.setQuality(tier);
   }
 
-  /* ------------------------------------------------------------------------
-     LOADER
-  ------------------------------------------------------------------------ */
-
-  setLoader(progress, status) {
-    this.progress =
-      Math.max(
-        0,
-        Math.min(
-          1,
-          progress
-        )
-      );
-
+  setLoader(progress, message) {
     const loader =
-      document.querySelector(
-        ".loader"
-      );
+      document.querySelector(".loader");
 
-    const progressElement =
+    const progressBar =
       document.querySelector(
         ".loader-progress"
       );
 
-    const statusElement =
+    const status =
       document.querySelector(
         ".loader-status"
       );
@@ -256,38 +181,26 @@ class SantinopoleApp {
     if (loader) {
       loader.style.setProperty(
         "--loader-progress",
-        this.progress
+        progress
       );
     }
 
-    if (progressElement) {
-      progressElement.style.transform =
-        `scaleX(${this.progress})`;
+    if (progressBar) {
+      progressBar.style.transform =
+        `scaleX(${progress})`;
     }
 
-    if (statusElement && status) {
-      statusElement.textContent =
-        status;
+    if (status && message) {
+      status.textContent =
+        message;
     }
   }
 
-  reveal() {
+  hideLoader() {
     const loader =
-      document.querySelector(
-        ".loader"
-      );
+      document.querySelector(".loader");
 
-    if (!loader) {
-      this.interface?.showInterface?.();
-      return;
-    }
-
-    if (
-      this.interface?.hideLoader
-    ) {
-      this.interface.hideLoader();
-      return;
-    }
+    if (!loader) return;
 
     loader.classList.add(
       "is-hidden"
@@ -299,52 +212,13 @@ class SantinopoleApp {
     );
   }
 
-  /* ------------------------------------------------------------------------
-     WEBGL
-  ------------------------------------------------------------------------ */
+  showFallback(message = "") {
+    const loader =
+      document.querySelector(".loader");
 
-  supportsWebGL() {
-    try {
-      const canvas =
-        document.createElement(
-          "canvas"
-        );
-
-      const context =
-        canvas.getContext(
-          "webgl2",
-          {
-            powerPreference:
-              "high-performance"
-          }
-        ) ||
-        canvas.getContext(
-          "webgl",
-          {
-            powerPreference:
-              "high-performance"
-          }
-        );
-
-      return Boolean(context);
-    } catch {
-      return false;
-    }
-  }
-
-  /* ------------------------------------------------------------------------
-     FALLBACK
-  ------------------------------------------------------------------------ */
-
-  showFallback(message) {
     const fallback =
       document.querySelector(
         ".webgl-fallback"
-      );
-
-    const loader =
-      document.querySelector(
-        ".loader"
       );
 
     if (loader) {
@@ -353,98 +227,35 @@ class SantinopoleApp {
       );
     }
 
-    if (!fallback) {
-      return;
-    }
+    if (!fallback) return;
 
     fallback.hidden = false;
     fallback.classList.add(
       "is-visible"
     );
 
-    const messageElement =
+    const text =
       fallback.querySelector(
         "[data-fallback-message]"
       );
 
-    if (
-      messageElement &&
-      message
-    ) {
-      messageElement.textContent =
+    if (text && message) {
+      text.textContent =
         message;
     }
   }
 
-  handleBootFailure(error) {
-    this.ready = false;
-
-    this.setLoader(
-      1,
-      "CITY INITIALIZATION FAILED"
-    );
-
-    this.showFallback(
-      "The SANTINOPOLE experience could not be initialized."
-    );
-
-    window.dispatchEvent(
-      new CustomEvent(
-        "santinopole:error",
-        {
-          detail: {
-            error
-          }
-        }
-      )
-    );
-  }
-
-  /* ------------------------------------------------------------------------
-     UTILITIES
-  ------------------------------------------------------------------------ */
-
-  waitFrame() {
+  nextFrame() {
     return new Promise(
       (resolve) => {
         requestAnimationFrame(
-          () => resolve()
+          resolve
         );
       }
     );
   }
 
-  getState() {
-    return {
-      ready: this.ready,
-      booted: this.booted,
-      destroyed: this.destroyed,
-      progress: this.progress,
-      quality:
-        performance.getTier?.() ||
-        "unknown"
-    };
-  }
-
-  /* ------------------------------------------------------------------------
-     DESTROY
-  ------------------------------------------------------------------------ */
-
   destroy() {
-    if (this.destroyed) {
-      return;
-    }
-
-    this.destroyed = true;
-    this.ready = false;
-
-    if (this.qualityHandler) {
-      window.removeEventListener(
-        "santinopole:quality",
-        this.qualityHandler
-      );
-    }
-
     this.interface?.destroy();
     this.scroll?.destroy();
     this.city?.destroy();
@@ -454,24 +265,23 @@ class SantinopoleApp {
     this.scroll = null;
     this.city = null;
     this.engine = null;
+
+    this.ready = false;
   }
 }
 
-/* --------------------------------------------------------------------------
-   GLOBAL APPLICATION
---------------------------------------------------------------------------- */
+let app;
 
-let app = null;
-
-function bootApplication() {
+function start() {
   if (app) return;
 
   app =
     new SantinopoleApp();
 
   window.SANTINOPOLE = {
-    app,
-    performance,
+    get app() {
+      return app;
+    },
 
     navigate(section) {
       app?.scroll?.goTo(
@@ -479,27 +289,12 @@ function bootApplication() {
       );
     },
 
-    getState() {
-      return (
-        app?.getState?.() || {
-          ready: false
-        }
-      );
-    },
-
     destroy() {
       app?.destroy();
-
       app = null;
-
-      delete window.SANTINOPOLE;
     }
   };
 }
-
-/* --------------------------------------------------------------------------
-   DOCUMENT READY
---------------------------------------------------------------------------- */
 
 if (
   document.readyState ===
@@ -507,40 +302,14 @@ if (
 ) {
   document.addEventListener(
     "DOMContentLoaded",
-    bootApplication,
+    start,
     {
       once: true
     }
   );
 } else {
-  bootApplication();
+  start();
 }
-
-/* --------------------------------------------------------------------------
-   PAGE LIFECYCLE
---------------------------------------------------------------------------- */
-
-window.addEventListener(
-  "pagehide",
-  () => {
-    app?.destroy();
-  },
-  {
-    once: true
-  }
-);
-
-window.addEventListener(
-  "pageshow",
-  () => {
-    if (
-      !app &&
-      !document.hidden
-    ) {
-      bootApplication();
-    }
-  }
-);
 
 export {
   SantinopoleApp
