@@ -1,11 +1,5 @@
 /* ============================================================
-   SANTINOPOLE — buildings.js
-   ------------------------------------------------------------
-   LOD 0 (near) — full archetypes + street walls + courtyards
-   LOD 1 (mid)  — instanced simplified boxes (materials shared)
-   LOD 2 (far)  — instanced silhouette boxes (single instanced mesh)
-   Plus: pedestrians, vehicles, trams, billboards, data highways,
-   signal bands.
+   SANTINOPOLE — buildings.js — FIXED
    ============================================================ */
 
 (function () {
@@ -147,7 +141,6 @@
   var FACADE_MATS = {};
   Object.keys(FACADE).forEach(function (k) { FACADE_MATS[k] = facadeMat(k); });
 
-  // Instanced palette (LOD 1 + 2)
   var INSTANCED_MATS = [
     new THREE.MeshLambertMaterial({ color: 0xd8c8a8 }),
     new THREE.MeshLambertMaterial({ color: 0xc8b898 }),
@@ -305,9 +298,6 @@
     }
   }
 
-  /* ============================================================
-     LOD 0 — archetypes
-     ============================================================ */
   function buildTower(lot) {
     var w=lot.w, d=lot.d, h=lot.h;
     var gh=4.5, uh=Math.max(1, h-gh);
@@ -408,11 +398,7 @@
     }
   }
 
-  /* ============================================================
-     LOD 1 + LOD 2 — INSTANCED
-     4 buckets by height class. ~37,000 boxes → 4 draw calls.
-     ============================================================ */
-  function buildInstancedCity(lots) {
+  function buildInstancedCity(lots, group) {
     var buckets = [[], [], [], []];
     for (var i = 0; i < lots.length; i++) {
       var h = lots[i].h;
@@ -421,19 +407,14 @@
       else if (h < 95) buckets[2].push(lots[i]);
       else buckets[3].push(lots[i]);
     }
-    // Base unit box, scaled per instance
     var baseGeo = new THREE.BoxGeometry(1, 1, 1);
     baseGeo.translate(0, 0.5, 0);
-
     var dummy = new THREE.Object3D();
-
     for (var c = 0; c < buckets.length; c++) {
       var bucket = buckets[c];
       if (bucket.length === 0) continue;
-
       var mesh = new THREE.InstancedMesh(baseGeo, INSTANCED_MATS[c], bucket.length);
       mesh.frustumCulled = false;
-
       for (var k = 0; k < bucket.length; k++) {
         var lot = bucket[k];
         dummy.position.set(lot.x, 0, lot.z);
@@ -444,13 +425,10 @@
       }
       mesh.instanceMatrix.needsUpdate = true;
       mesh.computeBoundingSphere();
-      scene_group.add(mesh);
+      group.add(mesh);
     }
   }
 
-  /* ============================================================
-     LANDMARKS
-     ============================================================ */
   function buildSpire(lm) {
     var r=8, h=lm.h;
     pushGeo(MATS.stone, new THREE.BoxGeometry(r*2.4, 8, r*2.4).translate(lm.x, 4, lm.z));
@@ -517,9 +495,6 @@
     }
   }
 
-  /* ============================================================
-     LIVING LAYER
-     ============================================================ */
   function preparePolyline(points) {
     var pts = [], cum = [0], total = 0;
     for (var i = 0; i < points.length; i++) pts.push(new THREE.Vector2(points[i][0], points[i][1]));
@@ -549,7 +524,7 @@
     var s = S.city.streets;
     for (var i = 0; i < s.length; i++) {
       if (s[i].points.length < 2) continue;
-      if (s[i].points.length > 200) continue; // skip giant rings for paths
+      if (s[i].points.length > 200) continue;
       var poly = preparePolyline(s[i].points);
       if (poly.total < 30) continue;
       walkPaths.push(poly);
@@ -603,9 +578,6 @@
     }
   }
 
-  /* ============================================================
-     BILLBOARDS
-     ============================================================ */
   var billboards = [];
   function makeBillboardCanvas(character, colHex) {
     var W = 512, H = 256;
@@ -694,9 +666,6 @@
   }
   buildBillboards();
 
-  /* ============================================================
-     DATA HIGHWAYS
-     ============================================================ */
   var dataHighways = [];
   function buildDataHighways() {
     if (Q.tier < 1) return;
@@ -740,9 +709,6 @@
   }
   buildDataHighways();
 
-  /* ============================================================
-     SIGNAL BANDS
-     ============================================================ */
   var signalBandGroups = [];
   var BAND_COLOR_BY_CHARACTER = {
     financial:'#e0b860', creative:'#5ad0d8', data:'#5ad8b0', commercial:'#ffb860',
@@ -755,13 +721,14 @@
     var bandsByDistrict = {};
     for (var i = 0; i < lots.length; i++) {
       var lot = lots[i];
-      if (lot.lod !== 0) continue; // only near city gets bands
+      if (lot.lod !== 0) continue;
       if (lot.character === 'park') continue;
       if (!bandsByDistrict[lot.districtId]) bandsByDistrict[lot.districtId] = { character: lot.character, lots: [] };
       bandsByDistrict[lot.districtId].lots.push(lot);
     }
     var districtIds = Object.keys(bandsByDistrict);
-    for (var di = 0; dId = districtIds[di], di < districtIds.length; di++) {
+    for (var di = 0; di < districtIds.length; di++) {
+      var dId = districtIds[di];
       var entry = bandsByDistrict[dId];
       var character = entry.character;
       var colorHex = BAND_COLOR_BY_CHARACTER[character] || '#c89858';
@@ -775,12 +742,12 @@
       var idx = 0;
       var dummy = new THREE.Object3D();
       for (var li = 0; li < entry.lots.length; li++) {
-        var lot = entry.lots[li];
+        var lot2 = entry.lots[li];
         for (var b = 0; b < 2; b++) {
-          var bandY = lot.h * (0.35 + b * 0.4);
-          dummy.position.set(lot.x, bandY, lot.z);
-          dummy.rotation.set(0, lot.rot, 0);
-          dummy.scale.set(lot.w * 1.06, 0.45, lot.d * 1.06);
+          var bandY = lot2.h * (0.35 + b * 0.4);
+          dummy.position.set(lot2.x, bandY, lot2.z);
+          dummy.rotation.set(0, lot2.rot, 0);
+          dummy.scale.set(lot2.w * 1.06, 0.45, lot2.d * 1.06);
           dummy.updateMatrix();
           mesh.setMatrixAt(idx++, dummy.matrix);
         }
@@ -791,9 +758,6 @@
   }
   buildSignalBands();
 
-  /* ============================================================
-     ANIMATE
-     ============================================================ */
   var _m4 = new THREE.Matrix4();
   var _q = new THREE.Quaternion();
   var _p = new THREE.Vector3();
@@ -875,13 +839,9 @@
     } else setTimeout(attachToLoop, 60);
   }
 
-  /* ============================================================
-     RUN
-     ============================================================ */
   var scene_group = new THREE.Group();
   scene_group.name = 'santinopole-buildings';
 
-  // Split lots by LOD
   var nearLots = [], instancedLots = [];
   for (var li2 = 0; li2 < S.city.lots.length; li2++) {
     var l = S.city.lots[li2];
@@ -897,7 +857,7 @@
   buildVehicles();
   buildTransit();
   flushBatches(scene_group);
-  buildInstancedCity(instancedLots);
+  buildInstancedCity(instancedLots, scene_group);
 
   if (pedMesh) scene_group.add(pedMesh);
   if (vehMesh) scene_group.add(vehMesh);
@@ -913,9 +873,7 @@
     materials: MATS,
     facadeMaterials: FACADE_MATS,
     animate: animate,
-    setNight: function (factor) {
-      // Daytime — windows off. This function kept for interface compatibility.
-    },
+    setNight: function (factor) {},
     count: (function () {
       var c = 0;
       scene_group.traverse(function (o) { if (o.isMesh) c++; });
