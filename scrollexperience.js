@@ -1,4 +1,3 @@
-
 /* ============================================================
    SANTINOPOLE — scrollexperience.js
    ------------------------------------------------------------
@@ -30,11 +29,11 @@
     { id: 1, name: 'ARRIVAL',         subtitle: 'The city appears' },
     { id: 2, name: 'DESCENT',         subtitle: 'Through the atmosphere' },
     { id: 3, name: 'THE STREETS',     subtitle: 'Boulevard level' },
-    { id: 4, name: 'WEB',             subtitle: 'The digital district' },
-    { id: 5, name: 'SEO',             subtitle: 'Discoverability' },
-    { id: 6, name: 'GROWTH',          subtitle: 'The commercial heart' },
+    { id: 4, name: 'FASHION',         subtitle: 'The Fashion District' },
+    { id: 5, name: 'SHOPPING',        subtitle: 'The Grand Corso' },
+    { id: 6, name: 'CANAL',           subtitle: 'Canal Quarter restaurants' },
     { id: 7, name: 'SANTINOPOLITANS', subtitle: 'The people' },
-    { id: 8, name: 'THE CITY REVEAL', subtitle: 'Everything, at once' }
+    { id: 8, name: 'THE CITY REVEAL', subtitle: 'The endless city' }
   ];
 
   function actIndexAt(p) {
@@ -45,75 +44,58 @@
   }
 
   /* ============================================================
-     2. CAMERA PATH — keyframes per act
-     Position, look-at, fov. Hand-authored beats.
-     Each act occupies an equal span (1/8 = 0.125).
+     2. CAMERA PATH — Milan-focused beats
      ============================================================ */
   var PATH = [
-    /* ---- ACT 01 — ARRIVAL (0.000 → 0.125) ----
-       High above the bay, looking north at the whole city.
-       Dawn. Wide. Slow. */
+    /* ACT 01 — ARRIVAL (0.000 → 0.125) */
     { p: 0.000, pos: [   0, 1250, 1500], look: [   0,  60,  -60], fov: 62 },
     { p: 0.060, pos: [   0,  980, 1220], look: [   0,  50,  -40], fov: 61 },
     { p: 0.125, pos: [   0,  720,  920], look: [   0,  45,  -20], fov: 59 },
 
-    /* ---- ACT 02 — DESCENT (0.125 → 0.250) ----
-       Fall through atmosphere toward downtown. Morning.
-       The city grows; individual buildings resolve. */
+    /* ACT 02 — DESCENT (0.125 → 0.250) */
     { p: 0.165, pos: [  20,  540,  760], look: [   0,  45,  -20], fov: 57 },
     { p: 0.205, pos: [  60,  340,  600], look: [   0,  40,  -10], fov: 56 },
     { p: 0.250, pos: [  80,  180,  480], look: [   0,  35,  -10], fov: 55 },
 
-    /* ---- ACT 03 — THE STREETS (0.250 → 0.375) ----
-       Reach street level. Down a boulevard. Pedestrians,
-       storefronts, traffic. Midday. */
+    /* ACT 03 — THE STREETS (0.250 → 0.375) */
     { p: 0.275, pos: [  60,   70,  400], look: [   0,  20,  200], fov: 56 },
     { p: 0.305, pos: [  40,   14,  320], look: [   0,  10,  160], fov: 54 },
     { p: 0.340, pos: [  50,    8,  240], look: [   0,  10,   80], fov: 54 },
     { p: 0.375, pos: [ 120,    6,  180], look: [  80,   8,   60], fov: 55 },
 
-    /* ---- ACT 04 — WEB (0.375 → 0.500) ----
-       Fly east to the Web Quarter. Creative district.
-       Golden afternoon. Approaching the Web Hub. */
-    { p: 0.410, pos: [ 280,   40,  120], look: [ 380,  40,   40], fov: 56 },
-    { p: 0.445, pos: [ 460,   70,   60], look: [ 470,  50,  -60], fov: 58 },
-    { p: 0.480, pos: [ 560,   60,  -10], look: [ 470,  55,  -90], fov: 58 },
-    { p: 0.500, pos: [ 600,   50,  -50], look: [ 470,  50, -100], fov: 60 },
+    /* ACT 04 — FASHION (0.375 → 0.500) — Quadrilatero della Moda */
+    { p: 0.410, pos: [ 200,   40,  120], look: [ 240,  30,  -40], fov: 56 },
+    { p: 0.445, pos: [ 200,   26,  -40], look: [ 180,  20, -140], fov: 56 },
+    { p: 0.480, pos: [ 140,   20, -100], look: [ 140,  16, -180], fov: 58 },
+    { p: 0.500, pos: [ 100,   14, -140], look: [ 140,  12, -220], fov: 58 },
 
-    /* ---- ACT 05 — SEO (0.500 → 0.625) ----
-       Cross downtown west to Index Ward. Sunset.
-       The city's data spine becomes visible. */
-    { p: 0.535, pos: [ 240,  200,  -20], look: [   0,  90,  -30], fov: 60 },
-    { p: 0.570, pos: [ -60,  220,  -10], look: [-260,  90,  -40], fov: 58 },
-    { p: 0.605, pos: [-360,  120,  -20], look: [-440,  60,  -60], fov: 58 },
-    { p: 0.625, pos: [-560,   70,  -40], look: [-440,  45,  -70], fov: 58 },
+    /* ACT 05 — SHOPPING (0.500 → 0.625) — Corso Buenos Aires */
+    { p: 0.535, pos: [ 240,   40,  -60], look: [ 340,  30,  -60], fov: 58 },
+    { p: 0.570, pos: [ 380,   24,  -40], look: [ 480,  20,  -60], fov: 58 },
+    { p: 0.605, pos: [ 500,   16,  -60], look: [ 620,  14,  -80], fov: 58 },
+    { p: 0.625, pos: [ 620,   12,  -80], look: [ 760,  10, -100], fov: 58 },
 
-    /* ---- ACT 06 — GROWTH (0.625 → 0.750) ----
-       Head south to Growth Front / Market. Dusk.
-       Commercial heart. Traffic peaks. Windows begin to glow. */
-    { p: 0.660, pos: [-420,   90, -180], look: [-150,  50, -400], fov: 58 },
-    { p: 0.695, pos: [-220,   90, -380], look: [   0,  50, -430], fov: 58 },
-    { p: 0.725, pos: [ -40,  100, -560], look: [   0,  55, -430], fov: 60 },
-    { p: 0.750, pos: [   0,   90, -600], look: [   0,  55, -420], fov: 62 },
+    /* ACT 06 — CANAL (0.625 → 0.750) — Navigli */
+    { p: 0.660, pos: [ 200,   30,  240], look: [ -40,  20,  320], fov: 58 },
+    { p: 0.695, pos: [ -80,   20,  360], look: [-300,  16,  400], fov: 58 },
+    { p: 0.725, pos: [-260,   14,  400], look: [-420,  12,  380], fov: 60 },
+    { p: 0.750, pos: [-400,   12,  420], look: [-540,  10,  400], fov: 60 },
 
-    /* ---- ACT 07 — SANTINOPOLITANS (0.750 → 0.875) ----
-       Pull back up. Nightfall. The city is lit.
-       Thousands of people, businesses, systems. */
-    { p: 0.785, pos: [   0,  240, -560], look: [   0,  50, -200], fov: 62 },
-    { p: 0.820, pos: [   0,  400, -380], look: [   0,  55,  -80], fov: 60 },
-    { p: 0.855, pos: [   0,  520, -200], look: [   0,  55,    0], fov: 60 },
-    { p: 0.875, pos: [   0,  620,  -80], look: [   0,  55,   20], fov: 60 },
+    /* ACT 07 — SANTINOPOLITANS (0.750 → 0.875) */
+    { p: 0.785, pos: [-400,  140,  420], look: [-200,  60,  200], fov: 62 },
+    { p: 0.820, pos: [-200,  300,  200], look: [   0,  60,    0], fov: 62 },
+    { p: 0.855, pos: [   0,  460,   60], look: [   0,  60,  -60], fov: 62 },
+    { p: 0.875, pos: [   0,  620,  -80], look: [   0,  55,  -20], fov: 62 },
 
-    /* ---- ACT 08 — THE CITY REVEAL (0.875 → 1.000) ----
-       Rise high. Deep night. Full metropolis, illuminated,
-       understood as one thing. */
-    { p: 0.910, pos: [   0,  820,  140], look: [   0,  60,  -80], fov: 62 },
-    { p: 0.955, pos: [   0, 1120,  480], look: [   0,  40, -260], fov: 64 },
-    { p: 1.000, pos: [   0, 1420,  820], look: [   0,  20, -420], fov: 66 }
+    /* ACT 08 — THE CITY REVEAL (0.875 → 1.000) — endless horizon */
+    { p: 0.895, pos: [   0,  950,  200], look: [   0,  55, -140], fov: 62 },
+    { p: 0.935, pos: [   0, 1400,  600], look: [   0,  40, -260], fov: 64 },
+    { p: 0.965, pos: [   0, 1600,  880], look: [   0,  30, -380], fov: 66 },
+    { p: 1.000, pos: [   0, 1750, 1100], look: [   0,  20, -500], fov: 68 }
   ];
 
   /* ============================================================
-     3. SAMPLE FOV from path (position and look use curves)
+     3. SAMPLE FOV
      ============================================================ */
   function sampleFov(p) {
     var i = 0;
@@ -125,8 +107,7 @@
   }
 
   /* ============================================================
-     4. BUILD CURVES — position and look-at as independent
-        Catmull-Rom curves, sampled N times for smoothness.
+     4. BUILD CURVES
      ============================================================ */
   function buildCurve(field) {
     var N = Math.max(40, Q.pathSamples);
@@ -151,11 +132,10 @@
   var lookCurve = buildCurve('look');
 
   /* ============================================================
-     5. SCROLL SETUP
-     Spacer height determines scroll length.
+     5. SCROLL SETUP — LONG ENOUGH TO FEEL ENDLESS
      ============================================================ */
-  var VH_MULT_DESKTOP = 20;   // 2000vh total scroll
-  var VH_MULT_MOBILE  = 14;   // shorter on mobile (thumb scrolling)
+  var VH_MULT_DESKTOP = 55;   // 5500vh total scroll — around 10 min at slow scroll
+  var VH_MULT_MOBILE  = 35;   // 3500vh — mobile thumb scrolling
   var spacer = document.getElementById('spacer');
 
   function setSpacerHeight() {
@@ -176,9 +156,9 @@
      6. STATE
      ============================================================ */
   var state = {
-    progress: 0,        // smoothed, 0..1
-    target: 0,          // raw scroll, 0..1
-    velocity: 0,        // scroll velocity (smoothed)
+    progress: 0,
+    target: 0,
+    velocity: 0,
     actIndex: 0,
     actChanged: false,
     paused: false,
@@ -203,14 +183,13 @@
   }
 
   /* ============================================================
-     7. SCROLL READ + LISTENER
+     7. SCROLL READ
      ============================================================ */
   function readScroll() {
     if (scrollMax <= 0) refreshScrollMax();
     state.target = Math.max(0, Math.min(1, window.scrollY / scrollMax));
   }
   readScroll();
-
   window.addEventListener('scroll', readScroll, { passive: true });
 
   /* ============================================================
@@ -230,7 +209,7 @@
   });
 
   /* ============================================================
-     9. VISIBILITY PAUSE
+     9. VISIBILITY
      ============================================================ */
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
@@ -254,7 +233,6 @@
     state.rafId = requestAnimationFrame(frame);
     if (state.paused) return;
 
-    /* ---- FRAME PACING (only on low tiers) ---- */
     if (frameInterval > 0) {
       if (state.lastFrameTime > 0) {
         var since = now - state.lastFrameTime;
@@ -267,26 +245,18 @@
       state.lastFrameTime = now;
     }
 
-    /* ---- DELTA TIME ---- */
-    var dt = state.started
-      ? Math.min((now - (state.lastFrameTime - (frameInterval ? frameInterval : 16))) / 1000, 0.05)
-      : 0.016;
+    var dt = 0.016;
     if (!state.started) {
       state.started = true;
-      dt = 0.016;
     } else {
-      // Recompute dt properly — the lastFrameTime was updated above
-      var realNow = now;
-      if (!state._prevNow) state._prevNow = realNow;
-      dt = Math.min((realNow - state._prevNow) / 1000, 0.05);
-      state._prevNow = realNow;
+      if (!state._prevNow) state._prevNow = now;
+      dt = Math.min((now - state._prevNow) / 1000, 0.05);
+      state._prevNow = now;
     }
     state.elapsed += dt;
 
-    /* ---- READ SCROLL TARGET (in case scroll event missed) ---- */
     readScroll();
 
-    /* ---- SMOOTH PROGRESS — frame-rate independent ---- */
     var smoothBase = Q.scrollSmooth || 0.0022;
     var k = 1 - Math.pow(smoothBase, dt);
     state.progress += (state.target - state.progress) * k;
@@ -295,12 +265,10 @@
     }
     var p = state.progress;
 
-    /* ---- VELOCITY (smoothed) ---- */
     var rawVel = (p - prevProgress) / Math.max(dt, 0.001);
     state.velocity = state.velocity * 0.82 + rawVel * 0.18;
     prevProgress = p;
 
-    /* ---- CAMERA POSE ---- */
     _pos.copy(posCurve.getPoint(p));
     _look.copy(lookCurve.getPoint(p));
 
@@ -308,11 +276,8 @@
     camera.fov = sampleFov(p) + clamp(state.velocity * 0.4, -4, 6);
     camera.updateProjectionMatrix();
     camera.lookAt(_look);
-
-    /* ---- SUBTLE ROLL from velocity — invisible but human ---- */
     camera.rotateZ(clamp(state.velocity * 0.05, -0.05, 0.05));
 
-    /* ---- ACT DETECTION ---- */
     var newActIndex = actIndexAt(p);
     if (newActIndex !== state.actIndex) {
       var prevIdx = state.actIndex;
@@ -320,17 +285,11 @@
       emitActChange(newActIndex, prevIdx);
     }
 
-    /* ---- ENVIRONMENT UPDATE ---- */
     S.environment.update(p, dt, state.elapsed);
-
-    /* ---- PERFORMANCE SAMPLE ---- */
     S.performance.measure();
 
-    /* ---- BROADCAST PROGRESS ---- */
     for (var i = 0; i < subscribers.length; i++) {
-      try {
-        subscribers[i](p, state.actIndex, dt, state.elapsed, state.velocity);
-      } catch (e) {}
+      try { subscribers[i](p, state.actIndex, dt, state.elapsed, state.velocity); } catch (e) {}
     }
   }
 
@@ -339,19 +298,14 @@
      ============================================================ */
   function start() {
     if (state.rafId) return;
-    // Ensure we begin from the current scroll position, not from 0
     readScroll();
     state.progress = state.target;
     prevProgress = state.progress;
     state._prevNow = 0;
     state.rafId = requestAnimationFrame(frame);
   }
-
   function stop() {
-    if (state.rafId) {
-      cancelAnimationFrame(state.rafId);
-      state.rafId = 0;
-    }
+    if (state.rafId) { cancelAnimationFrame(state.rafId); state.rafId = 0; }
   }
 
   /* ============================================================
@@ -366,19 +320,16 @@
     onProgress: onProgress,
     onActChange: onActChange,
     state: state,
-    // live read — safe for interface.js to poll
     getProgress: function () { return state.progress; },
     getActIndex: function () { return state.actIndex; },
     getAct: function () { return ACTS[state.actIndex]; },
     getVelocity: function () { return state.velocity; }
   };
 
-  S.log(
-    'scrollexperience',
-    true,
+  S.log('scrollexperience', true,
     ACTS.length + ' acts · ' +
     PATH.length + ' keys · ' +
-    (frameInterval ? 'capped ' + Q.fpsCap + 'fps' : 'uncapped')
-  );
+    'scroll ' + VH_MULT_DESKTOP + 'vh · ' +
+    (frameInterval ? 'capped ' + Q.fpsCap + 'fps' : 'uncapped'));
 
 })();
