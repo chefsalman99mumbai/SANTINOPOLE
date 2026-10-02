@@ -1,422 +1,515 @@
-/* ============================================================
-   SANTINOPOLE — performance.js
-   ------------------------------------------------------------
-   Device tier detection + adaptive quality + frame budget
-   enforcement. Produces S.performance.Q — the single source
-   of truth for every budget in the world.
+/* =========================================================
+   SANTINOPOLE DIGITAL
+   PERFORMANCE — ADAPTIVE QUALITY SYSTEM
+   ========================================================= */
 
-   Depends on: three.js (for S.capabilities + S.log)
-   Exposes:    window.SANTINOPOLE.performance.{Q, tier, adapt,
-               measure, onTierChange}
-   ============================================================ */
+class SantinopolePerformance {
+  constructor() {
+    this.state = {
+      tier: "high",
+      quality: 1,
+      fps: 60,
+      averageFps: 60,
+      frameTime: 16.67,
+      isMobile: false,
+      isTouch: false,
+      reducedMotion: false,
+      lowPower: false,
+      visible: true,
+    };
 
-(function () {
-  'use strict';
+    this.config = {
+      high: {
+        pixelRatio: 2,
+        shadows: true,
+        shadowMapSize: 2048,
+        particles: 1,
+        buildingDetail: 1,
+        fog: 1,
+        postProcessing: 1,
+      },
 
-  var S = window.SANTINOPOLE;
-  if (!S) {
-    console.error('[performance.js] three.js must load first.');
-    return;
+      medium: {
+        pixelRatio: 1.5,
+        shadows: true,
+        shadowMapSize: 1024,
+        particles: 0.65,
+        buildingDetail: 0.8,
+        fog: 0.8,
+        postProcessing: 0.65,
+      },
+
+      low: {
+        pixelRatio: 1,
+        shadows: false,
+        shadowMapSize: 512,
+        particles: 0.3,
+        buildingDetail: 0.55,
+        fog: 0.55,
+        postProcessing: 0.35,
+      },
+    };
+
+    this.samples = [];
+    this.maxSamples = 60;
+
+    this.lastFrame = performance.now();
+    this.lastQualityCheck = performance.now();
+
+    this.callbacks = new Set();
+
+    this.detectEnvironment();
+    this.bindVisibility();
   }
 
-  /* ============================================================
-     1. RAW SIGNALS — real numbers, not user-agent guessing
-     ============================================================ */
+  /* =======================================================
+     ENVIRONMENT DETECTION
+  ======================================================== */
 
-  function readSignals() {
-    var caps = S.capabilities || {};
+  detectEnvironment() {
+    const userAgent =
+      navigator.userAgent ||
+      navigator.vendor ||
+      window.opera ||
+      "";
 
-    var dpr = Math.min(
-      window.devicePixelRatio || 1,
-      caps.maxTextureSize >= 8192 ? 2.5 : 2
-    );
+    this.state.isMobile =
+      /android|iphone|ipad|ipod|mobile/i.test(
+        userAgent
+      ) ||
+      window.innerWidth <= 768;
 
-    var shortSide = Math.min(window.innerWidth, window.innerHeight);
-    var longSide  = Math.max(window.innerWidth, window.innerHeight);
+    this.state.isTouch =
+      "ontouchstart" in window ||
+      navigator.maxTouchPoints > 0;
 
-    var cores = navigator.hardwareConcurrency || 4;
+    this.state.reducedMotion =
+      window.matchMedia?.(
+        "(prefers-reduced-motion: reduce)"
+      ).matches === true;
 
-    var memoryGB = navigator.deviceMemory || 0;
-    var memoryAssumed = memoryGB === 0;
+    /*
+      Conservative mobile baseline.
 
-    var ua = (navigator.userAgent || '').toLowerCase();
-    var isIOS = /iphone|ipad|ipod/.test(ua) ||
-                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    var isAndroid = /android/.test(ua);
-    var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-    var isMobile = (isIOS || isAndroid || isTouch) && shortSide < 820;
+      We do not automatically destroy quality on
+      powerful phones, but we start with a sane
+      budget and allow the system to increase it
+      later when appropriate.
+    */
 
-    var gpu = (caps.rendererString || '').toLowerCase();
-    var isSoftwareGPU =
-      gpu.indexOf('swiftshader') !== -1 ||
-      gpu.indexOf('llvmpipe')     !== -1 ||
-      gpu.indexOf('software')     !== -1 ||
-      gpu.indexOf('basic render') !== -1;
+    if (this.state.isMobile) {
+      this.state.tier = "medium";
+    }
 
+    /*
+      Save battery / low-power environments.
+
+      This is intentionally conservative because
+      browser APIs do not expose reliable GPU
+      capability information everywhere.
+    */
+
+    this.state.lowPower =
+      navigator.hardwareConcurrency !== undefined &&
+      navigator.hardwareConcurrency <= 4;
+
+    if (this.state.lowPower) {
+      this.state.tier =
+        this.state.isMobile
+          ? "low"
+          : "medium";
+    }
+
+    if (this.state.reducedMotion) {
+      this.state.tier = "low";
+    }
+
+    this.notify();
+  }
+
+  /* =======================================================
+     QUALITY
+  ======================================================== */
+
+  getConfig() {
     return {
-      caps: caps,
-      dpr: dpr,
-      shortSide: shortSide,
-      longSide: longSide,
-      cores: cores,
-      memoryGB: memoryGB,
-      memoryAssumed: memoryAssumed,
-      isIOS: isIOS,
-      isAndroid: isAndroid,
-      isTouch: isTouch,
-      isMobile: isMobile,
-      isSoftwareGPU: isSoftwareGPU
+      ...this.config[
+        this.state.tier
+      ],
     };
   }
 
-  /* ============================================================
-     2. TIER CLASSIFICATION — five levels
-     ============================================================ */
-
-  function classifyTier(sig) {
-    if (sig.isSoftwareGPU) return 0;
-    if (!sig.caps.webgl2 && sig.isMobile && sig.cores <= 4) return 0;
-
-    var score = 0;
-
-    if (sig.caps.webgl2)            score += 3;
-    if (sig.caps.highpFragment)     score += 1;
-    if (sig.caps.floatTextures)     score += 2;
-    if (sig.caps.halfFloatTextures) score += 1;
-
-    if (sig.caps.maxTextureSize >= 16384) score += 3;
-    else if (sig.caps.maxTextureSize >= 8192) score += 2;
-    else if (sig.caps.maxTextureSize >= 4096) score += 1;
-
-    if (sig.caps.maxAnisotropy >= 16) score += 2;
-    else if (sig.caps.maxAnisotropy >= 8) score += 1;
-
-    if (sig.caps.maxFragmentUniforms >= 1024) score += 2;
-    else if (sig.caps.maxFragmentUniforms >= 512) score += 1;
-
-    if (sig.cores >= 8) score += 2;
-    else if (sig.cores >= 6) score += 1;
-
-    if (sig.memoryGB >= 8)      score += 3;
-    else if (sig.memoryGB >= 6) score += 2;
-    else if (sig.memoryGB >= 4) score += 1;
-    else if (sig.memoryAssumed) score += 1;
-
-    if (sig.isMobile) score -= 3;
-    if (sig.isIOS && sig.cores <= 4) score -= 2;
-
-    if (!sig.isMobile) {
-      if (sig.longSide >= 2560) score -= 1;
-      if (sig.longSide >= 3400) score -= 1;
-    }
-
-    if (score >= 16) return 4;
-    if (score >= 11) return 3;
-    if (score >= 7)  return 2;
-    if (score >= 3)  return 1;
-    return 0;
+  getQuality() {
+    return this.state.quality;
   }
 
-  /* ============================================================
-     3. QUALITY TABLE — one Q per tier
-     ============================================================ */
+  getTier() {
+    return this.state.tier;
+  }
 
-  function buildQ(tier, sig) {
-    var LADDERS = {
-      pixelRatio:    [0.75, 0.9, 1.0, 1.25, 1.5],
-      dprCap:        [1.0,  1.0, 1.5, 1.75, 2.0],
-
-      skySegW:       [12, 16, 24, 32, 48],
-      skySegH:       [8,  10, 14, 20, 28],
-      skyRadius:     [900, 1000, 1200, 1400, 1600],
-
-      shadowMap:     [0, 1024, 1536, 2048, 2048],
-      shadowType:    [0, 1, 2, 2, 2],
-
-      bloom:         [false, false, true,  true,  true],
-      bloomRes:      [0, 0, 256, 384, 512],
-
-      dof:           [false, false, false, true,  true],
-      grain:         [false, true,  true,  true,  true],
-      chromatic:     [false, false, false, true,  true],
-      godRays:       [false, false, true,  true,  true],
-
-      buildingsNear: [40,  80,  180, 320, 520],
-      buildingsMid:  [80,  160, 360, 620, 980],
-      buildingsFar:  [120, 240, 520, 880, 1400],
-      buildingDetail:[0,   1,   2,   3,   4],
-
-      pedestrians:   [0,   20,  80,  200, 460],
-      vehicles:      [0,   10,  40,  100, 220],
-      transitUnits:  [0,   2,   6,   14,  26],
-      trafficLights: [8,   16,  32,  60,  100],
-
-      lamps:         [40,  90,  180, 320, 520],
-      trees:         [20,  50,  120, 240, 400],
-      props:         [0,   30,  90,  200, 400],
-
-      particleMax:   [0,   200, 800, 2200, 5000],
-      dataflowLines: [0,   4,   12,  28,  60],
-      billboardsAnim:[0,   2,   6,   16,  32],
-
-      antialias:     [false, false, false, true, true],
-      anisotropy:    [1,   Math.min(2,  sig.caps.maxAnisotropy),
-                          Math.min(4,  sig.caps.maxAnisotropy),
-                          Math.min(8,  sig.caps.maxAnisotropy),
-                          Math.min(16, sig.caps.maxAnisotropy)],
-
-      textureSize:   [16,  32,  64,  128, 256],
-
-      pathSamples:   [40,  80,  160, 240, 360],
-
-      scrollSmooth:  [0.0018, 0.0018, 0.0022, 0.0024, 0.0026],
-
-      fpsCap:        [24,  30,  45,  60,  60],
-
-      minFps:        [22,  26,  40,  52,  54],
-      maxFps:        [30,  38,  55,  62,  62]
+  getState() {
+    return {
+      ...this.state,
     };
-
-    var q = {};
-    Object.keys(LADDERS).forEach(function (key) {
-      q[key] = LADDERS[key][tier];
-    });
-
-    q.effectivePixelRatio = Math.min(
-      sig.dpr,
-      q.dprCap,
-      window.devicePixelRatio ? window.devicePixelRatio : 1
-    ) * q.pixelRatio / Math.max(1, q.dprCap);
-    q.effectivePixelRatio = Math.max(0.5, Math.min(q.effectivePixelRatio, sig.dpr));
-
-    q.tier = tier;
-    q.tierName = ['MINIMAL', 'LOW', 'MID', 'HIGH', 'ULTRA'][tier];
-    q.isMobile = sig.isMobile;
-    q.isIOS = sig.isIOS;
-    q.isAndroid = sig.isAndroid;
-    q.isSoftwareGPU = sig.isSoftwareGPU;
-    q.reduceMotion = window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (sig.isMobile) {
-      q.buildingsNear = Math.min(q.buildingsNear, 180);
-      q.buildingsMid  = Math.min(q.buildingsMid,  300);
-      q.buildingsFar  = Math.min(q.buildingsFar,  400);
-      q.pedestrians   = Math.min(q.pedestrians,   120);
-      q.vehicles      = Math.min(q.vehicles,      60);
-      q.particleMax   = Math.min(q.particleMax,   1400);
-      q.lamps         = Math.min(q.lamps,         220);
-      q.shadowMap     = Math.min(q.shadowMap,     1024);
-      q.effectivePixelRatio = Math.min(q.effectivePixelRatio, 1.5);
-    }
-
-    if (q.reduceMotion) {
-      q.bloom     = false;
-      q.dof       = false;
-      q.chromatic = false;
-      q.godRays   = false;
-      q.grain     = false;
-      q.particleMax = Math.min(q.particleMax, 200);
-    }
-
-    return q;
   }
 
-  /* ============================================================
-     4. INITIALIZE
-     ============================================================ */
+  /* =======================================================
+     FRAME MONITORING
+  ======================================================== */
 
-  var sig = readSignals();
-  var initialTier = classifyTier(sig);
-  var Q = buildQ(initialTier, sig);
+  update() {
+    const now =
+      performance.now();
 
-  /* ============================================================
-     5. FRAME BUDGET ENFORCEMENT
-     ============================================================ */
+    const delta =
+      now - this.lastFrame;
 
-  var STATS = {
-    frames: 0,
-    fps: 60,
-    fpsRolling: 60,
-    lastSampleTime: performance.now(),
-    samplesSinceChange: 0,
-    consecutiveGood: 0,
-    warmupFrames: 90,
-    started: false
-  };
+    this.lastFrame = now;
 
-  var DOWNSHIFT_ORDER = [
-    'godRays',
-    'chromatic',
-    'grain',
-    'dof',
-    'bloom',
-    'effectivePixelRatio',
-    'particleMax',
-    'pedestrians',
-    'vehicles',
-    'lamps',
-    'shadowMap',
-    'buildingsFar',
-    'buildingsMid'
-  ];
-
-  var UPSHIFT_ORDER = [
-    'buildingsMid',
-    'buildingsFar',
-    'shadowMap',
-    'lamps',
-    'vehicles',
-    'pedestrians',
-    'particleMax',
-    'effectivePixelRatio'
-  ];
-
-  function downshift() {
-    for (var i = 0; i < DOWNSHIFT_ORDER.length; i++) {
-      var k = DOWNSHIFT_ORDER[i];
-      var v = Q[k];
-      if (typeof v === 'boolean' && v) { Q[k] = false; return k; }
-      if (typeof v === 'number' && v > 0) {
-        var nv;
-        if (k === 'effectivePixelRatio') nv = Math.max(0.5, v * 0.85);
-        else if (k === 'shadowMap')      nv = v >= 2048 ? 1536 : (v >= 1536 ? 1024 : (v >= 1024 ? 512 : 0));
-        else                              nv = Math.floor(v * 0.7);
-        if (nv !== v) { Q[k] = nv; return k; }
-      }
-    }
-    return null;
-  }
-
-  function upshift() {
-    for (var i = 0; i < UPSHIFT_ORDER.length; i++) {
-      var k = UPSHIFT_ORDER[i];
-      var v = Q[k];
-      var ideal = buildQ(initialTier, sig)[k];
-      if (typeof v === 'number' && v < ideal) {
-        var nv = (k === 'effectivePixelRatio')
-          ? Math.min(ideal, v * 1.08)
-          : Math.min(ideal, Math.ceil(v * 1.15 + 1));
-        if (nv !== v) { Q[k] = nv; return k; }
-      }
-    }
-    return null;
-  }
-
-  var tierChangeListeners = [];
-
-  function onTierChange(fn) {
-    if (typeof fn === 'function') tierChangeListeners.push(fn);
-  }
-
-  function emitTierChange(change, key) {
-    for (var i = 0; i < tierChangeListeners.length; i++) {
-      try { tierChangeListeners[i](change, key, Q); } catch (e) {}
-    }
-  }
-
-  function measure() {
-    var now = performance.now();
-    STATS.frames++;
-
-    if (now - STATS.lastSampleTime < 500) return;
-    var elapsed = (now - STATS.lastSampleTime) / 1000;
-    STATS.fps = STATS.frames / elapsed;
-    STATS.frames = 0;
-    STATS.lastSampleTime = now;
-
-    if (!STATS.started) {
-      STATS.warmupFrames--;
-      if (STATS.warmupFrames <= 0) STATS.started = true;
+    if (
+      delta <= 0 ||
+      delta > 250
+    ) {
       return;
     }
 
-    STATS.fpsRolling = STATS.fpsRolling * 0.7 + STATS.fps * 0.3;
+    const fps =
+      1000 / delta;
 
-    if (STATS.fpsRolling < Q.minFps) {
-      STATS.consecutiveGood = 0;
-      STATS.samplesSinceChange++;
-      if (STATS.samplesSinceChange >= 3) {
-        var changed = downshift();
-        if (changed) {
-          STATS.samplesSinceChange = 0;
-          emitTierChange('down', changed);
-        }
+    this.state.fps = fps;
+
+    this.samples.push(
+      fps
+    );
+
+    if (
+      this.samples.length >
+      this.maxSamples
+    ) {
+      this.samples.shift();
+    }
+
+    if (
+      now -
+        this.lastQualityCheck >
+      2000
+    ) {
+      this.evaluateQuality();
+
+      this.lastQualityCheck =
+        now;
+    }
+  }
+
+  /* =======================================================
+     QUALITY EVALUATION
+  ======================================================== */
+
+  evaluateQuality() {
+    if (
+      this.samples.length < 30
+    ) {
+      return;
+    }
+
+    const total =
+      this.samples.reduce(
+        (sum, value) =>
+          sum + value,
+        0
+      );
+
+    const average =
+      total /
+      this.samples.length;
+
+    this.state.averageFps =
+      average;
+
+    /*
+      Quality transitions are deliberately
+      hysteresis-based.
+
+      We don't want the city constantly jumping
+      between quality levels during normal
+      frame-rate fluctuations.
+    */
+
+    if (
+      average < 34 &&
+      this.state.tier !== "low"
+    ) {
+      this.lowerQuality();
+      return;
+    }
+
+    if (
+      average < 48 &&
+      this.state.tier === "high"
+    ) {
+      this.setTier("medium");
+      return;
+    }
+
+    /*
+      Only promote quality when performance is
+      comfortably above the threshold.
+    */
+
+    if (
+      average > 58 &&
+      this.state.tier === "low" &&
+      !this.state.isMobile &&
+      !this.state.lowPower &&
+      !this.state.reducedMotion
+    ) {
+      this.setTier("medium");
+      return;
+    }
+
+    if (
+      average > 58 &&
+      this.state.tier === "medium" &&
+      !this.state.isMobile &&
+      !this.state.lowPower &&
+      !this.state.reducedMotion
+    ) {
+      this.setTier("high");
+    }
+  }
+
+  /* =======================================================
+     QUALITY CONTROL
+  ======================================================== */
+
+  lowerQuality() {
+    if (
+      this.state.tier === "high"
+    ) {
+      this.setTier("medium");
+      return;
+    }
+
+    if (
+      this.state.tier === "medium"
+    ) {
+      this.setTier("low");
+    }
+  }
+
+  setTier(tier) {
+    if (
+      !this.config[tier]
+    ) {
+      return;
+    }
+
+    if (
+      this.state.tier === tier
+    ) {
+      return;
+    }
+
+    this.state.tier =
+      tier;
+
+    this.state.quality =
+      tier === "high"
+        ? 1
+        : tier === "medium"
+          ? 0.7
+          : 0.4;
+
+    this.samples.length = 0;
+
+    this.notify();
+  }
+
+  /* =======================================================
+     RENDER SETTINGS
+  ======================================================== */
+
+  getPixelRatio(
+    devicePixelRatio =
+      window.devicePixelRatio || 1
+  ) {
+    const config =
+      this.getConfig();
+
+    return Math.min(
+      devicePixelRatio,
+      config.pixelRatio
+    );
+  }
+
+  getParticleMultiplier() {
+    return this.getConfig()
+      .particles;
+  }
+
+  getBuildingDetail() {
+    return this.getConfig()
+      .buildingDetail;
+  }
+
+  getFogMultiplier() {
+    return this.getConfig()
+      .fog;
+  }
+
+  getPostProcessingQuality() {
+    return this.getConfig()
+      .postProcessing;
+  }
+
+  shouldUseShadows() {
+    return this.getConfig()
+      .shadows;
+  }
+
+  getShadowMapSize() {
+    return this.getConfig()
+      .shadowMapSize;
+  }
+
+  /* =======================================================
+     VISIBILITY
+  ======================================================== */
+
+  bindVisibility() {
+    this.handleVisibility =
+      this.handleVisibilityChange.bind(
+        this
+      );
+
+    document.addEventListener(
+      "visibilitychange",
+      this.handleVisibility
+    );
+  }
+
+  handleVisibilityChange() {
+    this.state.visible =
+      document.visibilityState ===
+      "visible";
+
+    this.notify();
+  }
+
+  isVisible() {
+    return this.state.visible;
+  }
+
+  /* =======================================================
+     FRAME CONTROL
+  ======================================================== */
+
+  shouldRender() {
+    return (
+      !document.hidden &&
+      this.state.visible
+    );
+  }
+
+  /* =======================================================
+     SUBSCRIPTIONS
+  ======================================================== */
+
+  subscribe(callback) {
+    if (
+      typeof callback !==
+      "function"
+    ) {
+      return () => {};
+    }
+
+    this.callbacks.add(
+      callback
+    );
+
+    callback(
+      this.getState()
+    );
+
+    return () => {
+      this.callbacks.delete(
+        callback
+      );
+    };
+  }
+
+  notify() {
+    const state =
+      this.getState();
+
+    this.callbacks.forEach(
+      (callback) => {
+        callback(state);
       }
-    }
-    else if (STATS.fpsRolling > Q.maxFps) {
-      STATS.consecutiveGood++;
-      if (STATS.consecutiveGood >= 12) {
-        var changedUp = upshift();
-        if (changedUp) {
-          STATS.consecutiveGood = 0;
-          emitTierChange('up', changedUp);
-        } else {
-          STATS.consecutiveGood = 0;
+    );
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "santinopole:quality",
+        {
+          detail: state,
         }
-      }
-    } else {
-      STATS.consecutiveGood = 0;
-      STATS.samplesSinceChange = 0;
-    }
+      )
+    );
   }
 
-  /* ============================================================
-     6. SNAP TO TIER
-     ============================================================ */
+  /* =======================================================
+     DEBUG
+  ======================================================== */
 
-  function snapToTier(newTier) {
-    if (newTier < 0 || newTier > 4) return;
-    if (newTier >= Q.tier) return;
-    var oldTier = Q.tier;
-    var rebuilt = buildQ(newTier, sig);
-    Object.keys(rebuilt).forEach(function (k) { Q[k] = rebuilt[k]; });
-    emitTierChange('snap', oldTier + '→' + newTier);
+  getDebugInfo() {
+    return {
+      tier: this.state.tier,
+      quality:
+        this.state.quality,
+      fps:
+        Math.round(
+          this.state.fps
+        ),
+      averageFps:
+        Math.round(
+          this.state.averageFps
+        ),
+      mobile:
+        this.state.isMobile,
+      touch:
+        this.state.isTouch,
+      reducedMotion:
+        this.state.reducedMotion,
+      lowPower:
+        this.state.lowPower,
+    };
   }
 
-  /* ============================================================
-     7. EXPOSE
-     ============================================================ */
+  /* =======================================================
+     CLEANUP
+  ======================================================== */
 
-  S.performance = {
-    Q: Q,
-    signals: sig,
-    tier: Q.tier,
-    tierName: Q.tierName,
-    measure: measure,
-    snapToTier: snapToTier,
-    onTierChange: onTierChange,
-    stats: STATS,
-    report: function () {
-      var lines = [
-        'TIER: ' + Q.tierName + ' (' + Q.tier + ')',
-        'GPU: ' + (sig.caps.rendererString || 'unknown'),
-        'WebGL2: ' + sig.caps.webgl2 + '  |  Cores: ' + sig.cores +
-          '  |  Mem: ' + (sig.memoryAssumed ? 'assumed 4GB' : sig.memoryGB + 'GB'),
-        'DPR: ' + sig.dpr.toFixed(2) + '  |  Effective: ' + Q.effectivePixelRatio.toFixed(2),
-        'FPS rolling: ' + STATS.fpsRolling.toFixed(1) + '  |  Cap: ' + Q.fpsCap,
-        'Buildings near/mid/far: ' + Q.buildingsNear + '/' + Q.buildingsMid + '/' + Q.buildingsFar,
-        'Pedestrians: ' + Q.pedestrians + '  |  Vehicles: ' + Q.vehicles +
-          '  |  Lamps: ' + Q.lamps,
-        'Bloom: ' + Q.bloom + '  |  DOF: ' + Q.dof + '  |  Grain: ' + Q.grain +
-          '  |  GodRays: ' + Q.godRays
-      ];
-      console.log('%cSANTINOPOLE · PERFORMANCE',
-        'color:#d4a24a;letter-spacing:0.2em;font-weight:bold', '\n' + lines.join('\n'));
-      return lines.join('\n');
-    }
-  };
+  destroy() {
+    document.removeEventListener(
+      "visibilitychange",
+      this.handleVisibility
+    );
 
-  /* ---------- REPORT ---------- */
-  S.log(
-    'performance',
-    true,
-    Q.tierName + ' · ' + (sig.isMobile ? 'mobile' : 'desktop') +
-    ' · dpr ' + Q.effectivePixelRatio.toFixed(2)
-  );
-
-  if (sig.isSoftwareGPU) {
-    S.log('GPU warning', true, 'software renderer · MINIMAL tier');
+    this.callbacks.clear();
+    this.samples.length = 0;
   }
+}
 
-})();
+/* =========================================================
+   SINGLETON
+   ========================================================= */
+
+const performanceController =
+  new SantinopolePerformance();
+
+export {
+  SantinopolePerformance,
+};
+
+export default performanceController;
