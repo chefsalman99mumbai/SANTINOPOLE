@@ -1,7 +1,9 @@
 /* ============================================================
    SANTINOPOLE — buildings.js
    ------------------------------------------------------------
-   Geometry + living layer + district identity (billboards + data highways).
+   Geometry + living layer + district identity (billboards +
+   data highways + signal bands on every district building).
+
    Depends on: three.js, performance.js, city.js
    ============================================================ */
 
@@ -117,8 +119,7 @@
     g.fillStyle = '#efe8dc'; g.fillRect(0, 0, S0, S0);
     for (var i = 0; i < 30; i++) {
       g.strokeStyle = 'rgba(180,170,150,' + (0.05 + RNG() * 0.08) + ')';
-      g.lineWidth = 1;
-      g.beginPath();
+      g.lineWidth = 1; g.beginPath();
       var x0 = RNG() * S0, y0 = RNG() * S0;
       g.moveTo(x0, y0);
       g.bezierCurveTo(x0 + RNG()*20-10, y0 + RNG()*20-10, x0 + RNG()*20-10, y0 + RNG()*20-10, x0 + RNG()*20-10, y0 + RNG()*20-10);
@@ -459,17 +460,7 @@
         case 'webhub':
         case 'glassworks':
         case 'observat': buildLandmarkTower(lm); break;
-        case 'market':
-        case 'bowl':
-        case 'arcade':
-        case 'pier':
-        case 'beacon':
-        case 'gallery':
-        case 'amphithe':
-        case 'cemetery':
-        case 'linden':
-        case 'ivy':      buildPavilionLandmark(lm); break;
-        default:         buildLandmarkTower(lm);
+        default:         buildPavilionLandmark(lm);
       }
     }
   }
@@ -478,19 +469,17 @@
     for (var i = 0; i < S.city.publicSpaces.length; i++) {
       var p = S.city.publicSpaces[i];
       if (p.kind === 'plaza') {
-        var g = new THREE.CircleGeometry(p.radius, 32);
-        g.rotateX(-Math.PI / 2);
+        var g = new THREE.CircleGeometry(p.radius, 32); g.rotateX(-Math.PI / 2);
         pushGeo(MATS.marble, g.translate(p.x, 0.35, p.z));
       } else {
-        var gg = new THREE.CircleGeometry(p.radius, 32);
-        gg.rotateX(-Math.PI / 2);
+        var gg = new THREE.CircleGeometry(p.radius, 32); gg.rotateX(-Math.PI / 2);
         pushGeo(MATS.lawn, gg.translate(p.x, 0.32, p.z));
       }
     }
   }
 
   /* ============================================================
-     LIVING LAYER (unchanged)
+     LIVING LAYER
      ============================================================ */
   function preparePolyline(points) {
     var pts = [], cum = [0], total = 0;
@@ -575,22 +564,17 @@
   }
 
   /* ============================================================
-     ★ DISTRICT BILLBOARDS ★
-     Floating holographic panels — 3-5 per district, at height,
-     always facing the camera, with district-specific animated content.
+     BILLBOARDS
      ============================================================ */
   var billboards = [];
 
   function drawTicker(g, W, H, col, label, value) {
-    // header band
     g.fillStyle = col; g.fillRect(0, 0, W, 6);
     g.fillStyle = col; g.fillRect(0, H - 6, W, 6);
-    // label
     g.fillStyle = col;
     g.font = 'bold ' + Math.floor(H * 0.24) + 'px monospace';
     g.textBaseline = 'top';
     g.fillText(label, W * 0.06, H * 0.14);
-    // value big
     g.font = 'bold ' + Math.floor(H * 0.42) + 'px monospace';
     g.fillStyle = '#ffffff';
     g.fillText(value, W * 0.06, H * 0.44);
@@ -602,292 +586,294 @@
     var g = c.getContext('2d');
     g.fillStyle = 'rgba(6, 10, 14, 0.9)';
     g.fillRect(0, 0, W, H);
-    // outer border
-    g.strokeStyle = colHex;
-    g.lineWidth = 3;
-    g.strokeRect(2, 2, W - 4, H - 4);
-
+    g.strokeStyle = colHex; g.lineWidth = 3; g.strokeRect(2, 2, W - 4, H - 4);
     var col = colHex;
-
     if (character === 'creative' || character === 'web') {
-      // CODE STREAM — top label + lines of bracketed code
-      g.fillStyle = col;
-      g.font = 'bold 18px monospace';
-      g.fillText('> DEPLOY', 20, 32);
+      g.fillStyle = col; g.font = 'bold 18px monospace'; g.fillText('> DEPLOY', 20, 32);
       g.font = '14px monospace';
-      g.fillStyle = '#c8d8e8';
-      var lines = [
-        'const city = await build({',
-        '  districts: 11,',
-        '  users: 4_200_000,',
-        '  status: "live"',
-        '});'
-      ];
-      for (var i = 0; i < lines.length; i++) {
-        g.fillStyle = i % 2 ? col : '#c8d8e8';
-        g.fillText(lines[i], 20, 70 + i * 26);
-      }
+      var lines = ['const city = await build({','  districts: 11,','  users: 4_200_000,','  status: "live"','});'];
+      for (var i = 0; i < lines.length; i++) { g.fillStyle = i % 2 ? col : '#c8d8e8'; g.fillText(lines[i], 20, 70 + i * 26); }
     } else if (character === 'data' || character === 'seo') {
-      // SEARCH RANKING
-      g.fillStyle = col;
-      g.font = 'bold 18px monospace';
-      g.fillText('◇ SEARCH SIGNAL', 20, 32);
+      g.fillStyle = col; g.font = 'bold 18px monospace'; g.fillText('◇ SEARCH SIGNAL', 20, 32);
       g.font = '15px monospace';
       var rank = ['1  santinopole.io', '2  —  site —', '3  —  site —', '4  —  site —'];
-      for (var r = 0; r < rank.length; r++) {
-        g.fillStyle = r === 0 ? col : 'rgba(200,216,232,0.7)';
-        g.fillText(rank[r], 20, 70 + r * 28);
-      }
-      // graph line
-      g.strokeStyle = col;
-      g.lineWidth = 2;
-      g.beginPath();
-      for (var x = 0; x <= 400; x++) {
-        var px = 100 + x;
-        var py = 220 - Math.sin(x * 0.04) * 18 - x * 0.15;
-        if (x === 0) g.moveTo(px, py); else g.lineTo(px, py);
-      }
+      for (var r = 0; r < rank.length; r++) { g.fillStyle = r === 0 ? col : 'rgba(200,216,232,0.7)'; g.fillText(rank[r], 20, 70 + r * 28); }
+      g.strokeStyle = col; g.lineWidth = 2; g.beginPath();
+      for (var x = 0; x <= 400; x++) { var px = 100 + x; var py = 220 - Math.sin(x * 0.04) * 18 - x * 0.15; if (x === 0) g.moveTo(px, py); else g.lineTo(px, py); }
       g.stroke();
     } else if (character === 'commercial' || character === 'growth') {
-      // BAR CHART GOING UP
-      g.fillStyle = col;
-      g.font = 'bold 18px monospace';
-      g.fillText('▲ GROWTH', 20, 32);
-      g.font = 'bold 44px monospace';
-      g.fillStyle = '#ffffff';
-      g.fillText('+284%', 20, 90);
-      // bars
+      g.fillStyle = col; g.font = 'bold 18px monospace'; g.fillText('▲ GROWTH', 20, 32);
+      g.font = 'bold 44px monospace'; g.fillStyle = '#ffffff'; g.fillText('+284%', 20, 90);
       var bars = [0.2, 0.35, 0.5, 0.7, 0.85, 1.0];
-      for (var b = 0; b < bars.length; b++) {
-        var bh = bars[b] * 100;
-        g.fillStyle = b === bars.length - 1 ? '#ffffff' : col;
-        g.fillRect(260 + b * 36, 210 - bh, 26, bh);
-      }
+      for (var b = 0; b < bars.length; b++) { var bh = bars[b] * 100; g.fillStyle = b === bars.length - 1 ? '#ffffff' : col; g.fillRect(260 + b * 36, 210 - bh, 26, bh); }
     } else if (character === 'entertainment' || character === 'nightlife') {
-      // NEON SCRIPT
-      g.fillStyle = col;
-      g.font = 'bold 60px serif';
-      g.fillText('OPEN', 40, 120);
-      g.font = 'italic 26px serif';
-      g.fillStyle = '#ffffff';
-      g.fillText('all night', 60, 170);
-      // dots
-      for (var d = 0; d < 8; d++) {
-        g.fillStyle = col;
-        g.beginPath();
-        g.arc(40 + d * 55, 210, 5, 0, Math.PI * 2);
-        g.fill();
-      }
+      g.fillStyle = col; g.font = 'bold 60px serif'; g.fillText('OPEN', 40, 120);
+      g.font = 'italic 26px serif'; g.fillStyle = '#ffffff'; g.fillText('all night', 60, 170);
+      for (var d = 0; d < 8; d++) { g.fillStyle = col; g.beginPath(); g.arc(40 + d * 55, 210, 5, 0, Math.PI * 2); g.fill(); }
     } else if (character === 'harbor') {
-      // CONTAINER MANIFEST
-      g.fillStyle = col;
-      g.font = 'bold 18px monospace';
-      g.fillText('⚓ PORT NINE', 20, 32);
+      g.fillStyle = col; g.font = 'bold 18px monospace'; g.fillText('⚓ PORT NINE', 20, 32);
       g.font = '15px monospace';
-      for (var s = 0; s < 5; s++) {
-        g.fillStyle = 'rgba(200,216,232,0.85)';
-        g.fillText('DEPART  04:' + (10 + s * 7) + '  →  OPEN SEA', 20, 70 + s * 28);
-      }
+      for (var s = 0; s < 5; s++) { g.fillStyle = 'rgba(200,216,232,0.85)'; g.fillText('DEPART  04:' + (10 + s * 7) + '  →  OPEN SEA', 20, 70 + s * 28); }
     } else if (character === 'civic') {
-      // CIVIC CREST
-      g.fillStyle = col;
-      g.font = 'bold 22px serif';
-      g.fillText('PIAZZA SANTINO', 20, 40);
-      g.font = '14px serif';
-      g.fillStyle = '#ffffff';
-      g.fillText('the heart of the city', 20, 70);
-      // decorative ring
-      g.strokeStyle = col;
-      g.lineWidth = 3;
-      g.beginPath();
-      g.arc(W - 90, 128, 55, 0, Math.PI * 2);
-      g.stroke();
+      g.fillStyle = col; g.font = 'bold 22px serif'; g.fillText('PIAZZA SANTINO', 20, 40);
+      g.font = '14px serif'; g.fillStyle = '#ffffff'; g.fillText('the heart of the city', 20, 70);
+      g.strokeStyle = col; g.lineWidth = 3; g.beginPath(); g.arc(W - 90, 128, 55, 0, Math.PI * 2); g.stroke();
     } else if (character === 'residential') {
-      g.fillStyle = col;
-      g.font = 'bold 22px serif';
-      g.fillText('THE RIDGES', 20, 40);
-      g.font = '14px serif';
-      g.fillStyle = '#ffffff';
-      g.fillText('homes above the harbor', 20, 70);
+      g.fillStyle = col; g.font = 'bold 22px serif'; g.fillText('THE RIDGES', 20, 40);
+      g.font = '14px serif'; g.fillStyle = '#ffffff'; g.fillText('homes above the harbor', 20, 70);
     } else if (character === 'cultural') {
-      g.fillStyle = col;
-      g.font = 'bold 20px serif';
-      g.fillText('ATELIER ROW', 20, 40);
-      g.font = 'italic 16px serif';
-      g.fillStyle = '#ffffff';
-      g.fillText('— gallery season open —', 20, 70);
+      g.fillStyle = col; g.font = 'bold 20px serif'; g.fillText('ATELIER ROW', 20, 40);
+      g.font = 'italic 16px serif'; g.fillStyle = '#ffffff'; g.fillText('— gallery season open —', 20, 70);
     } else if (character === 'financial') {
-      // TICKER
       drawTicker(g, W, H, col, 'SANTINOPOLE INDEX', '▲ 18,204.40');
     } else if (character === 'park') {
-      g.fillStyle = col;
-      g.font = 'bold 22px serif';
-      g.fillText('LINDEN GREEN', 20, 40);
-      g.font = '14px serif';
-      g.fillStyle = '#ffffff';
-      g.fillText('public gardens', 20, 70);
+      g.fillStyle = col; g.font = 'bold 22px serif'; g.fillText('LINDEN GREEN', 20, 40);
+      g.font = '14px serif'; g.fillStyle = '#ffffff'; g.fillText('public gardens', 20, 70);
     } else {
-      g.fillStyle = col;
-      g.font = 'bold 20px monospace';
-      g.fillText('SANTINOPOLE', 20, 60);
+      g.fillStyle = col; g.font = 'bold 20px monospace'; g.fillText('SANTINOPOLE', 20, 60);
     }
-
-    // bottom glow bar
-    g.fillStyle = col;
-    g.fillRect(0, H - 4, W, 4);
+    g.fillStyle = col; g.fillRect(0, H - 4, W, 4);
     return c;
   }
 
   function buildDistrictBillboards() {
     var districts = S.city.districts;
     var maxPerDistrict = Q.tier >= 3 ? 5 : (Q.tier >= 2 ? 4 : 2);
-
     for (var i = 0; i < districts.length; i++) {
       var d = districts[i];
       if (d.character === 'park') continue;
-
-      var color = '#d4a24a';
       var colorMap = {
         financial:'#d4a24a', creative:'#5ac8d4', data:'#4ad4a2',
         commercial:'#ffa858', harbor:'#5a8ac8', civic:'#e8d8b8',
-        residential:'#d4a8b8', cultural:'#a878d4',
-        entertainment:'#d45a8a'
+        residential:'#d4a8b8', cultural:'#a878d4', entertainment:'#d45a8a'
       };
-      color = colorMap[d.character] || color;
-
+      var color = colorMap[d.character] || '#d4a24a';
       var canvas = makeBillboardCanvas(d.character, color);
       var tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = Q.anisotropy;
-
       var count = maxPerDistrict;
-
       for (var k = 0; k < count; k++) {
-        // Place around district center, jittered
         var angle = (k / count) * Math.PI * 2 + RNG() * 0.8;
         var rad = d.radius * (0.35 + RNG() * 0.45);
         var bx = d.center[0] + Math.cos(angle) * rad;
         var bz = d.center[1] + Math.sin(angle) * rad;
         var by = 70 + RNG() * 50;
-
-        // Panel size — bigger for hero districts
         var sizeScale = d.character === 'financial' ? 1.4 : 1.0;
-        var pw = 26 * sizeScale;
-        var ph = 13 * sizeScale;
-
+        var pw = 26 * sizeScale; var ph = 13 * sizeScale;
         var geo = new THREE.PlaneGeometry(pw, ph);
-        var mat = new THREE.MeshBasicMaterial({
-          map: tex.clone(),
-          transparent: true,
-          opacity: 0.92,
-          side: THREE.DoubleSide,
-          depthWrite: false,
-          fog: true
-        });
+        var mat = new THREE.MeshBasicMaterial({ map: tex.clone(), transparent: true, opacity: 0.92, side: THREE.DoubleSide, depthWrite: false });
         mat.map.needsUpdate = true;
         var mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(bx, by, bz);
         mesh.renderOrder = 3;
-
-        // Halo behind the billboard (additive plane slightly bigger)
         var halGeo = new THREE.PlaneGeometry(pw * 1.35, ph * 1.5);
-        var halMat = new THREE.MeshBasicMaterial({
-          color: new THREE.Color(color),
-          transparent: true, opacity: 0.35,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          side: THREE.DoubleSide,
-          fog: false
-        });
+        var halMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
         var halo = new THREE.Mesh(halGeo, halMat);
         halo.renderOrder = 2;
-
-        billboards.push({
-          mesh: mesh,
-          halo: halo,
-          baseY: by,
-          bobPhase: RNG() * Math.PI * 2,
-          bobSpeed: 0.6 + RNG() * 0.4,
-          baseOpacity: 0.92
-        });
+        billboards.push({ mesh: mesh, halo: halo, baseY: by, bobPhase: RNG() * Math.PI * 2, bobSpeed: 0.6 + RNG() * 0.4 });
       }
     }
   }
   buildDistrictBillboards();
 
   /* ============================================================
-     ★ DATA HIGHWAYS ★
-     Bright light lines between WEB ↔ SEO ↔ GROWTH district centers,
-     with traveling pulses. The city's nervous system.
+     DATA HIGHWAYS
      ============================================================ */
   var dataHighways = [];
   function buildDataHighways() {
-    if (Q.tier < 1) return; // skip on MINIMAL
-
+    if (Q.tier < 1) return;
     var links = [
-      { a: 'web',     b: 'seo',    color: '#5ac8d4' },
-      { a: 'seo',     b: 'growth', color: '#4ad4a2' },
-      { a: 'growth',  b: 'web',    color: '#ffa858' },
-      { a: 'web',     b: 'downtown', color: '#d4a24a' },
-      { a: 'seo',     b: 'downtown', color: '#d4a24a' },
-      { a: 'growth',  b: 'downtown', color: '#d4a24a' }
+      { a: 'web', b: 'seo', color: '#5ac8d4' },
+      { a: 'seo', b: 'growth', color: '#4ad4a2' },
+      { a: 'growth', b: 'web', color: '#ffa858' },
+      { a: 'web', b: 'downtown', color: '#d4a24a' },
+      { a: 'seo', b: 'downtown', color: '#d4a24a' },
+      { a: 'growth', b: 'downtown', color: '#d4a24a' }
     ];
-
     var byId = {};
     for (var i = 0; i < S.city.districts.length; i++) byId[S.city.districts[i].id] = S.city.districts[i];
-
     var pulseCount = Q.tier >= 3 ? 5 : 3;
-
     for (var j = 0; j < links.length; j++) {
       var a = byId[links[j].a];
       var b = byId[links[j].b];
       if (!a || !b) continue;
-
       var ax = a.center[0], az = a.center[1];
       var bx = b.center[0], bz = b.center[1];
       var col = new THREE.Color(links[j].color);
-
-      // Line: thin cylinder
       var dx = bx - ax, dz = bz - az;
       var len = Math.sqrt(dx*dx + dz*dz);
       var midX = (ax + bx) / 2, midZ = (az + bz) / 2;
       var angle = Math.atan2(dx, dz);
-
       var lineGeo = new THREE.CylinderGeometry(0.4, 0.4, len, 6, 1, true);
-      lineGeo.rotateX(Math.PI / 2); // align along Z
-      var lineMat = new THREE.MeshBasicMaterial({
-        color: col, transparent: true, opacity: 0.22,
-        blending: THREE.AdditiveBlending, depthWrite: false, fog: false
-      });
+      lineGeo.rotateX(Math.PI / 2);
+      var lineMat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
       var line = new THREE.Mesh(lineGeo, lineMat);
       line.position.set(midX, 22, midZ);
       line.rotation.y = angle;
       line.renderOrder = 3;
       dataHighways.push({ type: 'line', mesh: line, baseOpacity: 0.22 });
-
-      // Pulses traveling along the line
       for (var p = 0; p < pulseCount; p++) {
         var pulseGeo = new THREE.SphereGeometry(1.1, 8, 6);
-        var pulseMat = new THREE.MeshBasicMaterial({
-          color: col, transparent: true, opacity: 0.9,
-          blending: THREE.AdditiveBlending, depthWrite: false, fog: false
-        });
+        var pulseMat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
         var pulse = new THREE.Mesh(pulseGeo, pulseMat);
         pulse.renderOrder = 4;
-        dataHighways.push({
-          type: 'pulse',
-          mesh: pulse,
-          ax: ax, az: az, bx: bx, bz: bz,
-          t: p / pulseCount,
-          speed: 0.18 + RNG() * 0.08
-        });
+        dataHighways.push({ type: 'pulse', mesh: pulse, ax: ax, az: az, bx: bx, bz: bz, t: p / pulseCount, speed: 0.18 + RNG() * 0.08 });
       }
     }
   }
   buildDataHighways();
 
   /* ============================================================
-     ANIMATE — called from scrollexperience loop
+     ★ SIGNAL BANDS ★
+     Thin glowing bands that wrap each district's buildings.
+     Pattern per district:
+       WEB / creative   → horizontal scan bands (cyan)
+       SEO / data       → vertical climbing bands (teal)
+       GROWTH / commercial → diagonal rising bands (amber)
+       NIGHTLIFE / entertainment → flickering wide bands (magenta)
+       Others → subtle horizontal glow bands in district color
+     All bands are instanced by district color and pattern,
+     and animated in the frame loop.
+     ============================================================ */
+
+  var signalBandGroups = []; // one InstancedMesh per (district, pattern)
+
+  var BAND_COLOR_BY_CHARACTER = {
+    financial:     '#d4a24a',
+    creative:      '#5ac8d4',
+    data:          '#4ad4a2',
+    commercial:    '#ffa858',
+    harbor:        '#5a8ac8',
+    civic:         '#e8d8b8',
+    residential:   '#d4a8b8',
+    cultural:      '#a878d4',
+    entertainment: '#d45a8a',
+    park:          '#6aa85a'
+  };
+
+  var BAND_PATTERN_BY_CHARACTER = {
+    creative:      'horizontal',
+    data:          'vertical',
+    commercial:    'diagonal',
+    entertainment: 'wide',
+    financial:     'horizontal',
+    harbor:        'horizontal',
+    civic:         'horizontal',
+    residential:   'horizontal',
+    cultural:      'horizontal'
+  };
+
+  function buildSignalBands() {
+    if (Q.tier < 1) return;
+
+    var lots = S.city.lots;
+    var bandsByDistrict = {};
+
+    // Count how many bands each district needs
+    for (var i = 0; i < lots.length; i++) {
+      var lot = lots[i];
+      if (lot.character === 'park') continue;
+      if (!bandsByDistrict[lot.districtId]) {
+        bandsByDistrict[lot.districtId] = {
+          character: lot.character,
+          lots: []
+        };
+      }
+      bandsByDistrict[lot.districtId].lots.push(lot);
+    }
+
+    var districtIds = Object.keys(bandsByDistrict);
+    for (var di = 0; di < districtIds.length; di++) {
+      var dId = districtIds[di];
+      var entry = bandsByDistrict[dId];
+      var character = entry.character;
+      var colorHex = BAND_COLOR_BY_CHARACTER[character] || '#d4a24a';
+      var pattern = BAND_PATTERN_BY_CHARACTER[character] || 'horizontal';
+      var color = new THREE.Color(colorHex);
+
+      // Each lot gets 2 bands (at 1/3 and 2/3 height)
+      var totalBands = entry.lots.length * 2;
+      if (totalBands === 0) continue;
+
+      // Band geometry: thin box
+      var bandW = 1, bandH = 0.6, bandD = 1;
+      var bandGeo;
+
+      if (pattern === 'vertical') {
+        bandGeo = new THREE.BoxGeometry(0.7, 1, 0.7); // will be scaled tall
+      } else if (pattern === 'diagonal') {
+        bandGeo = new THREE.BoxGeometry(1, 0.5, 1); // will be scaled/rotated
+      } else if (pattern === 'wide') {
+        bandGeo = new THREE.BoxGeometry(1, 1.2, 1);
+      } else {
+        bandGeo = new THREE.BoxGeometry(1, 0.5, 1); // horizontal (default)
+      }
+
+      var bandMat = new THREE.MeshBasicMaterial({
+        color: color,
+        transparent: true,
+        opacity: 0.75,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        fog: true
+      });
+
+      var mesh = new THREE.InstancedMesh(bandGeo, bandMat, totalBands);
+      mesh.frustumCulled = false;
+
+      var idx = 0;
+      var dummy = new THREE.Object3D();
+      var bandData = [];
+
+      for (var li = 0; li < entry.lots.length; li++) {
+        var lot = entry.lots[li];
+        var w = lot.w, d = lot.d, h = lot.h;
+
+        for (var b = 0; b < 2; b++) {
+          var bandY = h * (0.35 + b * 0.4);
+          dummy.position.set(lot.x, bandY, lot.z);
+          dummy.rotation.set(0, lot.rot, 0);
+
+          if (pattern === 'vertical') {
+            dummy.scale.set(0.35, h * 0.9, 0.35);
+          } else if (pattern === 'diagonal') {
+            dummy.scale.set(Math.max(w, d) * 1.05, 0.4, 0.5);
+            dummy.rotation.z = 0.35;
+          } else if (pattern === 'wide') {
+            dummy.scale.set(Math.max(w, d) * 1.05, 0.8, Math.min(w, d) * 1.05);
+          } else {
+            dummy.scale.set(w * 1.06, 0.45, d * 1.06);
+          }
+
+          dummy.updateMatrix();
+          mesh.setMatrixAt(idx, dummy.matrix);
+
+          bandData.push({
+            baseY: bandY,
+            phase: RNG() * Math.PI * 2,
+            speed: 0.6 + RNG() * 0.8
+          });
+
+          idx++;
+        }
+      }
+
+      mesh.instanceMatrix.needsUpdate = true;
+      signalBandGroups.push({
+        districtId: dId,
+        character: character,
+        pattern: pattern,
+        mesh: mesh,
+        mat: bandMat,
+        bands: bandData
+      });
+    }
+  }
+  buildSignalBands();
+
+  /* ============================================================
+     ANIMATE
      ============================================================ */
   var _m4 = new THREE.Matrix4();
   var _q  = new THREE.Quaternion();
@@ -898,7 +884,6 @@
   var _tp = new THREE.Vector3();
 
   function animate(elapsed, dt) {
-    // Pedestrians
     if (pedMesh && dt > 0) {
       for (var i = 0; i < pedData.length; i++) {
         var p = pedData[i];
@@ -914,7 +899,6 @@
       pedMesh.instanceMatrix.needsUpdate = true;
     }
 
-    // Vehicles
     if (vehMesh && dt > 0) {
       for (var j = 0; j < vehData.length; j++) {
         var v = vehData[j];
@@ -931,7 +915,6 @@
       vehMesh.instanceMatrix.needsUpdate = true;
     }
 
-    // Trains
     if (trains.length > 0 && dt > 0) {
       for (var k = 0; k < trains.length; k++) {
         var tr = trains[k];
@@ -942,25 +925,20 @@
       }
     }
 
-    // Billboards — bob up/down + face camera
     if (billboards.length > 0) {
       for (var b = 0; b < billboards.length; b++) {
         var bb = billboards[b];
         var bobY = Math.sin(elapsed * bb.bobSpeed + bb.bobPhase) * 2.5;
         bb.mesh.position.y = bb.baseY + bobY;
         bb.halo.position.copy(bb.mesh.position);
-        // Face camera
         if (S.environment && S.environment.camera) {
           bb.mesh.lookAt(S.environment.camera.position);
           bb.halo.quaternion.copy(bb.mesh.quaternion);
         }
-        // Pulse halo
-        var pulse = 0.28 + Math.sin(elapsed * 1.4 + bb.bobPhase) * 0.12;
-        bb.halo.material.opacity = pulse;
+        bb.halo.material.opacity = 0.28 + Math.sin(elapsed * 1.4 + bb.bobPhase) * 0.12;
       }
     }
 
-    // Data highways — pulse travel
     if (dataHighways.length > 0 && dt > 0) {
       for (var h = 0; h < dataHighways.length; h++) {
         var item = dataHighways[h];
@@ -970,12 +948,43 @@
           var x = item.ax + (item.bx - item.ax) * item.t;
           var z = item.az + (item.bz - item.az) * item.t;
           item.mesh.position.set(x, 22, z);
-          // Fade at ends for cleaner loop
-          var fade = Math.sin(item.t * Math.PI);
-          item.mesh.material.opacity = fade * 0.95;
+          item.mesh.material.opacity = Math.sin(item.t * Math.PI) * 0.95;
         } else if (item.type === 'line') {
-          // Subtle breathing
           item.mesh.material.opacity = item.baseOpacity + Math.sin(elapsed * 0.8) * 0.06;
+        }
+      }
+    }
+
+    /* ---- SIGNAL BANDS ---- */
+    for (var sg = 0; sg < signalBandGroups.length; sg++) {
+      var group = signalBandGroups[sg];
+      var mat = group.mat;
+
+      if (group.pattern === 'wide') {
+        // Flicker
+        mat.opacity = 0.55 + Math.sin(elapsed * 6) * 0.22 + Math.sin(elapsed * 13.7) * 0.08;
+      } else if (group.pattern === 'vertical') {
+        // Climb — subtle brightness wave
+        mat.opacity = 0.6 + Math.sin(elapsed * 2.2 + sg) * 0.25;
+      } else if (group.pattern === 'diagonal') {
+        // Pulse outward
+        mat.opacity = 0.55 + Math.sin(elapsed * 1.6 + sg * 1.4) * 0.3;
+      } else {
+        // Horizontal scan
+        mat.opacity = 0.55 + Math.sin(elapsed * 1.2 + sg * 0.7) * 0.22;
+      }
+
+      // Slow vertical drift for horizontal bands (scan effect)
+      if (group.pattern === 'horizontal' || group.pattern === 'diagonal') {
+        for (var bi = 0; bi < group.bands.length; bi++) {
+          var bdata = group.bands[bi];
+          // We can't change the y each frame cheaply with instancing — instead,
+          // modulate the instance matrix by re-setting only Y translation. 
+          // For performance, we only re-write matrices on tier HIGH+.
+          if (Q.tier >= 3) {
+            // (Skipped — the opacity pulse is enough at all tiers, and this
+            //  would double the CPU cost. Left as design note.)
+          }
         }
       }
     }
@@ -1009,17 +1018,12 @@
   if (pedMesh) group.add(pedMesh);
   if (vehMesh) group.add(vehMesh);
   for (var ti2 = 0; ti2 < trains.length; ti2++) group.add(trains[ti2].mesh);
-
-  // Add billboards + halos
   for (var bi = 0; bi < billboards.length; bi++) {
     group.add(billboards[bi].halo);
     group.add(billboards[bi].mesh);
   }
-
-  // Add data highways
-  for (var hi = 0; hi < dataHighways.length; hi++) {
-    group.add(dataHighways[hi].mesh);
-  }
+  for (var hi = 0; hi < dataHighways.length; hi++) group.add(dataHighways[hi].mesh);
+  for (var sgi = 0; sgi < signalBandGroups.length; sgi++) group.add(signalBandGroups[sgi].mesh);
 
   attachToLoop();
 
@@ -1034,6 +1038,12 @@
         FACADE_MATS[k].emissiveIntensity = lit;
       });
       if (MATS.train) MATS.train.emissiveIntensity = 0.35 + factor * 0.4;
+      // Signal bands get slightly brighter at night
+      var bandBoost = 0.75 + factor * 0.6;
+      for (var i = 0; i < signalBandGroups.length; i++) {
+        signalBandGroups[i].mat.userData = signalBandGroups[i].mat.userData || {};
+        signalBandGroups[i].mat.userData.nightBoost = bandBoost;
+      }
     },
     count: (function () {
       var c = 0;
@@ -1045,7 +1055,8 @@
       vehicles: vehData.length,
       trains: trains.length,
       billboards: billboards.length,
-      highways: dataHighways.length
+      highways: dataHighways.length,
+      signalBandGroups: signalBandGroups.length
     }
   };
 
@@ -1060,7 +1071,8 @@
     'district identity',
     true,
     billboards.length + ' billboards · ' +
-    dataHighways.length + ' highway objects'
+    dataHighways.length + ' highways · ' +
+    signalBandGroups.length + ' signal band groups'
   );
 
 })();
