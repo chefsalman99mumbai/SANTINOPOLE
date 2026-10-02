@@ -1,22 +1,8 @@
-/* =========================================================
-   SANTINOPOLE DIGITAL
-   MAIN — APPLICATION ORCHESTRATOR
-   ========================================================= */
-
-import SantinopoleEngine from "./three.js";
-import performanceController from "./performance.js";
-
-/* =========================================================
-   OPTIONAL SYSTEM IMPORTS
-   ========================================================= */
-
+import { SantinopoleEngine } from "./three.js";
+import performance from "./performance.js";
 import City from "./city.js";
 import ScrollExperience from "./scrollexperience.js";
 import Interface from "./interface.js";
-
-/* =========================================================
-   APPLICATION
-   ========================================================= */
 
 class SantinopoleApp {
   constructor() {
@@ -26,192 +12,296 @@ class SantinopoleApp {
     this.interface = null;
 
     this.ready = false;
+    this.booted = false;
     this.destroyed = false;
 
-    this.systems = [];
+    this.progress = 0;
+
+    this.boot();
   }
 
-  /* =======================================================
+  /* ------------------------------------------------------------------------
      BOOT
-  ======================================================== */
+  ------------------------------------------------------------------------ */
 
   async boot() {
-    try {
-      this.setLoadingState(0);
+    if (this.booted || this.destroyed) {
+      return;
+    }
 
-      /*
-        WebGL check before creating the renderer.
-      */
+    this.booted = true;
+
+    try {
+      this.setLoader(
+        0.04,
+        "INITIALIZING SANTINOPOLE"
+      );
+
+      await this.waitFrame();
 
       if (!this.supportsWebGL()) {
-        this.showWebGLFallback();
+        this.showFallback(
+          "WebGL is unavailable on this device."
+        );
+
         return;
       }
 
-      this.setLoadingState(15);
-
-      /*
-        CORE ENGINE
-      */
+      this.setLoader(
+        0.12,
+        "CALIBRATING CITY ENGINE"
+      );
 
       this.engine =
-        new SantinopoleEngine();
+        new SantinopoleEngine({
+          canvas:
+            document.querySelector(
+              "#scene-canvas"
+            )
+        });
 
-      this.setLoadingState(30);
+      this.connectEngineEvents();
 
-      /*
-        CITY
-      */
+      this.setLoader(
+        0.28,
+        "BUILDING THE METROPOLIS"
+      );
+
+      await this.waitFrame();
 
       this.city =
         new City(
           this.engine,
-          performanceController
+          performance
         );
 
-      this.systems.push(
-        this.city
+      this.setLoader(
+        0.52,
+        "ACTIVATING SANTINOPOLITANS"
       );
 
-      this.setLoadingState(50);
-
-      /*
-        CINEMATIC SCROLL SYSTEM
-      */
+      await this.waitFrame();
 
       this.scroll =
         new ScrollExperience(
           this.engine,
           this.city,
-          performanceController
+          performance
         );
 
-      this.systems.push(
-        this.scroll
+      this.setLoader(
+        0.72,
+        "CALIBRATING CITY NAVIGATION"
       );
 
-      this.setLoadingState(70);
-
-      /*
-        INTERFACE
-      */
+      await this.waitFrame();
 
       this.interface =
         new Interface(
           this.engine,
           this.city,
           this.scroll,
-          performanceController
+          performance
         );
 
-      this.systems.push(
-        this.interface
+      this.setLoader(
+        0.88,
+        "CONNECTING THE CITY"
       );
-
-      this.setLoadingState(90);
-
-      /*
-        CONNECT SYSTEMS
-      */
 
       this.connectSystems();
 
-      this.setLoadingState(100);
+      await this.waitFrame();
+
+      this.setLoader(
+        1,
+        "WELCOME TO SANTINOPOLE"
+      );
+
+      this.reveal();
 
       this.ready = true;
 
-      await this.revealExperience();
-
-      console.log(
-        "%cSANTINOPOLE DIGITAL",
-        "font-size:18px;font-weight:600;letter-spacing:4px;"
+      window.dispatchEvent(
+        new CustomEvent(
+          "santinopole:ready",
+          {
+            detail: {
+              app: this
+            }
+          }
+        )
       );
-
-      console.log(
-        "%cWEB • SEO • GROWTH",
-        "font-size:10px;letter-spacing:3px;opacity:.6;"
-      );
-
     } catch (error) {
       console.error(
-        "[SANTINOPOLE] Boot failure:",
+        "[SANTINOPOLE]",
         error
       );
 
-      this.showFallbackError(
-        error
-      );
+      this.handleBootFailure(error);
     }
   }
 
-  /* =======================================================
-     SYSTEM CONNECTION
-  ======================================================== */
+  /* ------------------------------------------------------------------------
+     ENGINE EVENTS
+  ------------------------------------------------------------------------ */
 
-  connectSystems() {
-    /*
-      Engine resize event.
-    */
+  connectEngineEvents() {
+    if (!this.engine) return;
+
+    this.engine.on(
+      "ready",
+      () => {
+        this.eventsReady = true;
+      }
+    );
 
     this.engine.on(
       "resize",
-      () => {
-        this.city?.resize?.();
-        this.scroll?.resize?.();
-        this.interface?.resize?.();
-      }
-    );
-
-    /*
-      Performance changes.
-    */
-
-    performanceController.subscribe(
-      (state) => {
-        this.city?.setQuality?.(
-          state
+      ({ width, height }) => {
+        this.city?.resize(
+          width,
+          height
         );
 
-        this.scroll?.setQuality?.(
-          state
+        this.scroll?.resize(
+          width,
+          height
         );
 
-        this.interface?.setQuality?.(
-          state
-        );
-      }
-    );
-
-    /*
-      City ready event.
-    */
-
-    this.city?.on?.(
-      "ready",
-      () => {
-        document.body.classList.add(
-          "city-ready"
-        );
-      }
-    );
-
-    /*
-      Global application events.
-    */
-
-    window.addEventListener(
-      "santinopole:navigate",
-      (event) => {
-        this.handleNavigation(
-          event.detail
+        this.interface?.resize(
+          width,
+          height
         );
       }
     );
   }
 
-  /* =======================================================
-     WEBGL DETECTION
-  ======================================================== */
+  /* ------------------------------------------------------------------------
+     SYSTEM CONNECTION
+  ------------------------------------------------------------------------ */
+
+  connectSystems() {
+    this.qualityHandler =
+      ({ detail }) => {
+        if (!detail?.tier) return;
+
+        this.engine?.setQuality(
+          detail.tier
+        );
+
+        this.city?.setQuality(
+          detail.tier
+        );
+
+        this.scroll?.setQuality(
+          detail.tier
+        );
+
+        this.interface?.setQuality(
+          detail.tier
+        );
+      };
+
+    window.addEventListener(
+      "santinopole:quality",
+      this.qualityHandler
+    );
+
+    /*
+      Apply the current quality state
+      immediately rather than waiting for
+      the performance monitor to change tier.
+    */
+
+    const tier =
+      performance.getTier?.() ||
+      "high";
+
+    this.engine?.setQuality(tier);
+    this.city?.setQuality(tier);
+    this.scroll?.setQuality(tier);
+    this.interface?.setQuality(tier);
+  }
+
+  /* ------------------------------------------------------------------------
+     LOADER
+  ------------------------------------------------------------------------ */
+
+  setLoader(progress, status) {
+    this.progress =
+      Math.max(
+        0,
+        Math.min(
+          1,
+          progress
+        )
+      );
+
+    const loader =
+      document.querySelector(
+        ".loader"
+      );
+
+    const progressElement =
+      document.querySelector(
+        ".loader-progress"
+      );
+
+    const statusElement =
+      document.querySelector(
+        ".loader-status"
+      );
+
+    if (loader) {
+      loader.style.setProperty(
+        "--loader-progress",
+        this.progress
+      );
+    }
+
+    if (progressElement) {
+      progressElement.style.transform =
+        `scaleX(${this.progress})`;
+    }
+
+    if (statusElement && status) {
+      statusElement.textContent =
+        status;
+    }
+  }
+
+  reveal() {
+    const loader =
+      document.querySelector(
+        ".loader"
+      );
+
+    if (!loader) {
+      this.interface?.showInterface?.();
+      return;
+    }
+
+    if (
+      this.interface?.hideLoader
+    ) {
+      this.interface.hideLoader();
+      return;
+    }
+
+    loader.classList.add(
+      "is-hidden"
+    );
+
+    loader.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+  }
+
+  /* ------------------------------------------------------------------------
+     WEBGL
+  ------------------------------------------------------------------------ */
 
   supportsWebGL() {
     try {
@@ -224,262 +314,192 @@ class SantinopoleApp {
         canvas.getContext(
           "webgl2",
           {
-            failIfMajorPerformanceCaveat:
-              false,
+            powerPreference:
+              "high-performance"
           }
         ) ||
         canvas.getContext(
           "webgl",
           {
-            failIfMajorPerformanceCaveat:
-              false,
+            powerPreference:
+              "high-performance"
           }
         );
 
-      return Boolean(
-        context
-      );
+      return Boolean(context);
     } catch {
       return false;
     }
   }
 
-  /* =======================================================
-     LOADING
-  ======================================================== */
+  /* ------------------------------------------------------------------------
+     FALLBACK
+  ------------------------------------------------------------------------ */
 
-  setLoadingState(
-    progress
-  ) {
-    const progressBar =
+  showFallback(message) {
+    const fallback =
       document.querySelector(
-        "#loader-progress"
+        ".webgl-fallback"
       );
 
-    if (progressBar) {
-      progressBar.style.width =
-        `${Math.min(
-          100,
-          Math.max(
-            0,
-            progress
-          )
-        )}%`;
+    const loader =
+      document.querySelector(
+        ".loader"
+      );
+
+    if (loader) {
+      loader.classList.add(
+        "is-hidden"
+      );
     }
 
-    const status =
-      document.querySelector(
-        ".loader-status"
-      );
-
-    if (!status) {
+    if (!fallback) {
       return;
     }
 
-    if (progress < 25) {
-      status.textContent =
-        "INITIALIZING CITY";
-    } else if (progress < 50) {
-      status.textContent =
-        "BUILDING INFRASTRUCTURE";
-    } else if (progress < 75) {
-      status.textContent =
-        "CONNECTING DISTRICTS";
-    } else if (progress < 100) {
-      status.textContent =
-        "CALIBRATING EXPERIENCE";
-    } else {
-      status.textContent =
-        "CITY ONLINE";
+    fallback.hidden = false;
+    fallback.classList.add(
+      "is-visible"
+    );
+
+    const messageElement =
+      fallback.querySelector(
+        "[data-fallback-message]"
+      );
+
+    if (
+      messageElement &&
+      message
+    ) {
+      messageElement.textContent =
+        message;
     }
   }
 
-  /* =======================================================
-     REVEAL
-  ======================================================== */
+  handleBootFailure(error) {
+    this.ready = false;
 
-  async revealExperience() {
-    const loader =
-      document.querySelector(
-        "#loader"
-      );
+    this.setLoader(
+      1,
+      "CITY INITIALIZATION FAILED"
+    );
 
-    if (!loader) {
-      return;
-    }
+    this.showFallback(
+      "The SANTINOPOLE experience could not be initialized."
+    );
 
-    await new Promise(
+    window.dispatchEvent(
+      new CustomEvent(
+        "santinopole:error",
+        {
+          detail: {
+            error
+          }
+        }
+      )
+    );
+  }
+
+  /* ------------------------------------------------------------------------
+     UTILITIES
+  ------------------------------------------------------------------------ */
+
+  waitFrame() {
+    return new Promise(
       (resolve) => {
         requestAnimationFrame(
-          () => {
-            requestAnimationFrame(
-              resolve
-            );
-          }
+          () => resolve()
         );
       }
     );
-
-    loader.style.transition =
-      "opacity 1200ms cubic-bezier(0.16,1,0.3,1)";
-
-    loader.style.opacity = "0";
-
-    document.body.classList.remove(
-      "is-loading"
-    );
-
-    setTimeout(
-      () => {
-        loader.remove();
-      },
-      1300
-    );
   }
 
-  /* =======================================================
-     NAVIGATION
-  ======================================================== */
-
-  handleNavigation(
-    destination
-  ) {
-    if (
-      !destination
-    ) {
-      return;
-    }
-
-    if (
-      typeof destination ===
-      "string"
-    ) {
-      this.scroll?.goTo?.(
-        destination
-      );
-
-      return;
-    }
-
-    if (
-      destination.section
-    ) {
-      this.scroll?.goTo?.(
-        destination.section
-      );
-    }
+  getState() {
+    return {
+      ready: this.ready,
+      booted: this.booted,
+      destroyed: this.destroyed,
+      progress: this.progress,
+      quality:
+        performance.getTier?.() ||
+        "unknown"
+    };
   }
 
-  /* =======================================================
-     FALLBACK
-  ======================================================== */
-
-  showWebGLFallback() {
-    const fallback =
-      document.querySelector(
-        "#webgl-fallback"
-      );
-
-    const loader =
-      document.querySelector(
-        "#loader"
-      );
-
-    if (loader) {
-      loader.remove();
-    }
-
-    if (fallback) {
-      fallback.hidden = false;
-    }
-
-    document.body.classList.remove(
-      "is-loading"
-    );
-  }
-
-  showFallbackError(
-    error
-  ) {
-    console.error(
-      "[SANTINOPOLE] Fatal:",
-      error
-    );
-
-    const loader =
-      document.querySelector(
-        "#loader"
-      );
-
-    if (loader) {
-      loader.style.opacity =
-        "0";
-    }
-
-    document.body.classList.remove(
-      "is-loading"
-    );
-  }
-
-  /* =======================================================
+  /* ------------------------------------------------------------------------
      DESTROY
-  ======================================================== */
+  ------------------------------------------------------------------------ */
 
   destroy() {
-    if (
-      this.destroyed
-    ) {
+    if (this.destroyed) {
       return;
     }
 
-    this.destroyed =
-      true;
+    this.destroyed = true;
+    this.ready = false;
 
-    this.systems.forEach(
-      (system) => {
-        system?.destroy?.();
-      }
-    );
+    if (this.qualityHandler) {
+      window.removeEventListener(
+        "santinopole:quality",
+        this.qualityHandler
+      );
+    }
 
-    this.engine?.destroy?.();
+    this.interface?.destroy();
+    this.scroll?.destroy();
+    this.city?.destroy();
+    this.engine?.destroy();
 
-    performanceController.destroy();
-
-    this.engine = null;
-    this.city = null;
-    this.scroll = null;
     this.interface = null;
-    this.systems.length = 0;
+    this.scroll = null;
+    this.city = null;
+    this.engine = null;
   }
 }
 
-/* =========================================================
-   GLOBAL APP INSTANCE
-   ========================================================= */
+/* --------------------------------------------------------------------------
+   GLOBAL APPLICATION
+--------------------------------------------------------------------------- */
 
-const app =
-  new SantinopoleApp();
+let app = null;
 
-/*
-  Expose a controlled debug handle.
+function bootApplication() {
+  if (app) return;
 
-  This is useful during development without
-  polluting the application architecture.
-*/
+  app =
+    new SantinopoleApp();
 
-window.SANTINOPOLE = {
-  app,
-  performance:
-    performanceController,
-};
+  window.SANTINOPOLE = {
+    app,
+    performance,
 
-/* =========================================================
-   START
-   ========================================================= */
+    navigate(section) {
+      app?.scroll?.goTo(
+        section
+      );
+    },
 
-document.body.classList.add(
-  "is-loading"
-);
+    getState() {
+      return (
+        app?.getState?.() || {
+          ready: false
+        }
+      );
+    },
+
+    destroy() {
+      app?.destroy();
+
+      app = null;
+
+      delete window.SANTINOPOLE;
+    }
+  };
+}
+
+/* --------------------------------------------------------------------------
+   DOCUMENT READY
+--------------------------------------------------------------------------- */
 
 if (
   document.readyState ===
@@ -487,27 +507,43 @@ if (
 ) {
   document.addEventListener(
     "DOMContentLoaded",
-    () => app.boot(),
+    bootApplication,
     {
-      once: true,
+      once: true
     }
   );
 } else {
-  app.boot();
+  bootApplication();
 }
 
-/* =========================================================
-   HOT-RELOAD / PAGE CLEANUP
-   ========================================================= */
+/* --------------------------------------------------------------------------
+   PAGE LIFECYCLE
+--------------------------------------------------------------------------- */
 
 window.addEventListener(
   "pagehide",
   () => {
-    app.destroy();
+    app?.destroy();
   },
   {
-    once: true,
+    once: true
   }
 );
+
+window.addEventListener(
+  "pageshow",
+  () => {
+    if (
+      !app &&
+      !document.hidden
+    ) {
+      bootApplication();
+    }
+  }
+);
+
+export {
+  SantinopoleApp
+};
 
 export default app;
