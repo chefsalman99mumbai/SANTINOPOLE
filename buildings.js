@@ -1,1 +1,716 @@
 
+/* ============================================================
+   SANTINOPOLE — buildings.js
+   ------------------------------------------------------------
+   Turns city.js data into geometry: roads, sidewalks, buildings,
+   landmarks, parks. Batched by material, budget-aware.
+
+   Depends on: three.js (global), performance.js (Q), city.js
+   Exposes:    window.SANTINOPOLE.buildings.group (THREE.Group)
+   ============================================================ */
+
+(function () {
+  'use strict';
+
+  var S = window.SANTINOPOLE;
+  var THREE = window.THREE;
+
+  if (!S || !S.city || !S.performance || !THREE) {
+    console.error('[buildings.js] three.js, performance.js and city.js must load first.');
+    return;
+  }
+  var Q = S.performance.Q;
+
+  /* ============================================================
+     SEEDED RNG — deterministic, distinct from city.js
+     ============================================================ */
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  var RNG = mulberry32(77123);
+
+  /* ============================================================
+     PROCEDURAL TEXTURES
+     Each archetype gets its own facade pair (map + emissive).
+     ============================================================ */
+  var TEX_SIZE = Math.max(32, Q.textureSize);
+  var TEX_H = Math.floor(TEX_SIZE * 1.6);
+
+  function makeCanvas(w, h) {
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    return c;
+  }
+  function makeTex(canvas, rx, ry) {
+    var t = new THREE.CanvasTexture(canvas);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    if (rx !== undefined) t.repeat.set(rx, ry === undefined ? rx : ry);
+    t.anisotropy = Q.anisotropy;
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.needsUpdate = true;
+    return t;
+  }
+
+  /* Facade template — base color, window color, lit-window color,
+     window layout (rows × cols), gap ratios. Returns { map, emi }. */
+  function makeFacade(cfg) {
+    var W = TEX_SIZE, H = TEX_H;
+    var c = makeCanvas(W, H);
+    var e = makeCanvas(W, H);
+    var g = c.getContext('2d');
+    var ge = e.getContext('2d');
+
+    g.fillStyle = cfg.base; g.fillRect(0, 0, W, H);
+    ge.fillStyle = '#000'; ge.fillRect(0, 0, W, H);
+
+    // horizontal band across the top (roof cornice color)
+    if (cfg.cornice) { g.fillStyle = cfg.cornice; g.fillRect(0, 0, W, 2); }
+
+    var rows = cfg.rows, cols = cfg.cols;
+    var pw = W / cols, ph = H / rows;
+    var ww = pw * cfg.wRatio, wh = ph * cfg.hRatio;
+    var wx0 = (pw - ww) / 2, wy0 = (ph - wh) / 2;
+
+    for (var ry = 0; ry < rows; ry++) {
+      for (var rx = 0; rx < cols; rx++) {
+        var wx = rx * pw + wx0;
+        var wy = ry * ph + wy0;
+
+        // frame (thin stroke around window)
+        if (cfg.frame) {
+          g.fillStyle = cfg.frame;
+          g.fillRect(wx - 1, wy - 1, ww + 2, wh + 2);
+        }
+
+        // glass gradient
+        var gg = g.createLinearGradient(wx, wy, wx, wy + wh);
+        gg.addColorStop(0, cfg.glassTop);
+        gg.addColorStop(1, cfg.glassBot);
+        g.fillStyle = gg;
+        g.fillRect(wx, wy, ww, wh);
+
+        // emissive lit window — random-ish per cell via noise function
+        var noise = (Math.sin(rx * 12.9898 + ry * 78.233) * 43758.5453) % 1;
+        noise = noise - Math.floor(noise);
+        if (noise > cfg.litThreshold) {
+          var eg = ge.createLinearGradient(wx, wy, wx, wy + wh);
+          eg.addColorStop(0, cfg.litTop);
+          eg.addColorStop(1, cfg.litBot);
+          ge.fillStyle = eg;
+          ge.fillRect(wx, wy, ww, wh);
+        }
+      }
+    }
+
+    return { map: makeTex(c), emi: makeTex(e) };
+  }
+
+  var FACADE_CFG = {
+    tower:     { base:'#1a2530', cornice:'#0a1015', frame:'#0e141c',
+                 glassTop:'#3a4a5c', glassBot:'#0c1218',
+                 litTop:'#ffd9a8', litBot:'#a06a30',
+                 rows:3, cols:2, wRatio:0.75, hRatio:0.62, litThreshold:0.55 },
+    office:    { base:'#c8bca0', cornice:'#8a8272', frame:'#a89c80',
+                 glassTop:'#4a5060', glassBot:'#1a1e28',
+                 litTop:'#ffdca0', litBot:'#a07840',
+                 rows:3, cols:2, wRatio:0.62, hRatio:0.55, litThreshold:0.58 },
+    block:     { base:'#c8a888', cornice:'#8a6a48', frame:'#a88a6a',
+                 glassTop:'#3a4048', glassBot:'#12161e',
+                 litTop:'#ffd0a0', litBot:'#9c6a3c',
+                 rows:3, cols:2, wRatio:0.55, hRatio:0.55, litThreshold:0.55 },
+    creative:  { base:'#3a3a3e', cornice:'#f0e2c8', frame:'#2a2a2e',
+                 glassTop:'#586a7c', glassBot:'#181c24',
+                 litTop:'#f0d0b0', litBot:'#8060a0',
+                 rows:2, cols:2, wRatio:0.78, hRatio:0.7, litThreshold:0.5 },
+    data:      { base:'#1c2830', cornice:'#0a1a22', frame:'#14202a',
+                 glassTop:'#3a6a8a', glassBot:'#0a1420',
+                 litTop:'#60d0ff', litBot:'#2a6a9c',
+                 rows:4, cols:3, wRatio:0.65, hRatio:0.5, litThreshold:0.6 },
+    commercial:{ base:'#d8c8a8', cornice:'#8a5a3a', frame:'#b89878',
+                 glassTop:'#4a4a52', glassBot:'#181820',
+                 litTop:'#ffe0a0', litBot:'#a87838',
+                 rows:2, cols:2, wRatio:0.7, hRatio:0.6, litThreshold:0.48 },
+    warehouse: { base:'#7a7264', cornice:'#3a3a34', frame:'#5a5448',
+                 glassTop:'#2a3038', glassBot:'#0a0c10',
+                 litTop:'#ffcc88', litBot:'#8a6438',
+                 rows:2, cols:4, wRatio:0.32, hRatio:0.42, litThreshold:0.7 },
+    rowhouse:  { base:'#d0b898', cornice:'#8a5a3a', frame:'#a88060',
+                 glassTop:'#3a4654', glassBot:'#121820',
+                 litTop:'#ffd9a0', litBot:'#9c6c3c',
+                 rows:3, cols:2, wRatio:0.48, hRatio:0.6, litThreshold:0.5 },
+    pavilion:  { base:'#ece4d2', cornice:'#c8bca0', frame:'#a89878',
+                 glassTop:'#3a4a58', glassBot:'#141c24',
+                 litTop:'#ffe0b0', litBot:'#a88848',
+                 rows:1, cols:2, wRatio:0.6, hRatio:0.7, litThreshold:0.5 },
+    landmark:  { base:'#e0d8c8', cornice:'#a09080', frame:'#b8a890',
+                 glassTop:'#3a4654', glassBot:'#101820',
+                 litTop:'#ffe0b0', litBot:'#a08040',
+                 rows:4, cols:2, wRatio:0.55, hRatio:0.55, litThreshold:0.45 }
+  };
+
+  var FACADE = {};
+  Object.keys(FACADE_CFG).forEach(function (k) { FACADE[k] = makeFacade(FACADE_CFG[k]); });
+
+  // Cobble texture for sidewalks / plazas
+  function makeCobble() {
+    var S0 = TEX_SIZE;
+    var c = makeCanvas(S0, S0);
+    var g = c.getContext('2d');
+    g.fillStyle = '#332e29'; g.fillRect(0, 0, S0, S0);
+    var rows = 5, cell = S0 / rows;
+    for (var r = 0; r < rows; r++) {
+      var off = (r & 1) ? cell * 0.5 : 0;
+      for (var i = -1; i < rows + 1; i++) {
+        var l = 0.5 + RNG() * 0.4;
+        g.fillStyle = 'rgb(' + Math.floor(120*l) + ',' + Math.floor(112*l) + ',' + Math.floor(100*l) + ')';
+        g.fillRect(i * cell + off + 0.5, r * cell + 0.5, cell - 1, cell - 1);
+      }
+    }
+    return makeTex(c, 6, 6);
+  }
+  var COBBLE_TEX = makeCobble();
+
+  // Marble for piazzas / pavilions
+  function makeMarble() {
+    var S0 = TEX_SIZE, c = makeCanvas(S0, S0), g = c.getContext('2d');
+    g.fillStyle = '#efe8dc'; g.fillRect(0, 0, S0, S0);
+    for (var i = 0; i < 30; i++) {
+      g.strokeStyle = 'rgba(180,170,150,' + (0.05 + RNG() * 0.08) + ')';
+      g.lineWidth = 1;
+      g.beginPath();
+      var x0 = RNG() * S0, y0 = RNG() * S0;
+      g.moveTo(x0, y0);
+      g.bezierCurveTo(x0 + RNG()*20-10, y0 + RNG()*20-10,
+                      x0 + RNG()*20-10, y0 + RNG()*20-10,
+                      x0 + RNG()*20-10, y0 + RNG()*20-10);
+      g.stroke();
+    }
+    return makeTex(c, 1, 1);
+  }
+  var MARBLE_TEX = makeMarble();
+
+  /* ============================================================
+     MATERIALS
+     ============================================================ */
+  var MATS = {
+    asphalt: new THREE.MeshStandardMaterial({ color: 0x18181a, roughness: 0.94, metalness: 0.05 }),
+    sidewalk: new THREE.MeshStandardMaterial({ map: COBBLE_TEX, color: 0xb8b0a0, roughness: 0.92 }),
+    marble:   new THREE.MeshStandardMaterial({ map: MARBLE_TEX, color: 0xf0ebdc, roughness: 0.42 }),
+    lawn:     new THREE.MeshStandardMaterial({ color: 0x4a6a3a, roughness: 0.95 }),
+    water:    new THREE.MeshStandardMaterial({ color: 0x0a1620, roughness: 0.12, metalness: 0.85,
+                                               emissive: 0x000814, emissiveIntensity: 0.4 }),
+    roof:     new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.85 }),
+    metal:    new THREE.MeshStandardMaterial({ color: 0x2a2e32, roughness: 0.4, metalness: 0.85 }),
+    stone:    new THREE.MeshStandardMaterial({ color: 0xc8bca0, roughness: 0.88 })
+  };
+
+  function facadeMat(kind) {
+    var f = FACADE[kind] || FACADE.office;
+    return new THREE.MeshStandardMaterial({
+      map: f.map, emissiveMap: f.emi,
+      emissive: 0xffffff, emissiveIntensity: 0,
+      roughness: kind === 'tower' || kind === 'data' ? 0.42 : 0.88,
+      metalness: kind === 'tower' || kind === 'data' ? 0.42 : 0.05
+    });
+  }
+  var FACADE_MATS = {};
+  Object.keys(FACADE).forEach(function (k) { FACADE_MATS[k] = facadeMat(k); });
+
+  /* ============================================================
+     GEOMETRY HELPERS
+     ============================================================ */
+  function boxUV(w, h, d, tw, th) {
+    var g = new THREE.BoxGeometry(w, h, d);
+    var uv = g.attributes.uv, nrm = g.attributes.normal;
+    for (var i = 0; i < uv.count; i++) {
+      var nx = Math.abs(nrm.getX(i)), ny = Math.abs(nrm.getY(i));
+      var su, sv;
+      if (ny > 0.5) { su = w / tw; sv = d / tw; }
+      else if (nx > 0.5) { su = d / tw; sv = h / th; }
+      else { su = w / tw; sv = h / th; }
+      uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+    }
+    uv.needsUpdate = true;
+    return g;
+  }
+
+  function gableRoof(w, d, rh) {
+    var hw = w / 2, hd = d / 2;
+    var pos = [
+      -hw,0,hd,  hw,0,hd,  hw,rh,0, -hw,0,hd,  hw,rh,0, -hw,rh,0,
+       hw,0,-hd, -hw,0,-hd, -hw,rh,0,  hw,0,-hd, -hw,rh,0,  hw,rh,0,
+      -hw,0,-hd, -hw,0,hd, -hw,rh,0,
+       hw,0,hd,  hw,0,-hd,  hw,rh,0
+    ];
+    var uv = [];
+    for (var i = 0; i < pos.length / 3; i++) uv.push(pos[i*3] / 4, pos[i*3+2] / 4);
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.computeVertexNormals();
+    return g;
+  }
+
+  function pyramidRoof(w, d, rh) {
+    var hw = w/2, hd = d/2;
+    var pos = [
+      -hw,0,hd,  hw,0,hd,  0,rh,0,
+       hw,0,hd,  hw,0,-hd, 0,rh,0,
+       hw,0,-hd, -hw,0,-hd,0,rh,0,
+      -hw,0,-hd, -hw,0,hd, 0,rh,0
+    ];
+    var uv = [];
+    for (var i = 0; i < pos.length / 3; i++) uv.push(pos[i*3] / 4, pos[i*3+2] / 4);
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.computeVertexNormals();
+    return g;
+  }
+
+  /* Merge BufferGeometry array — used for material batching */
+  function mergeGeoms(geos) {
+    if (!geos || geos.length === 0) return null;
+    if (geos.length === 1) return geos[0];
+    var allIdx = true, anyIdx = false;
+    for (var i = 0; i < geos.length; i++) {
+      if (geos[i].index) anyIdx = true; else allIdx = false;
+    }
+    var arr = geos;
+    if (!allIdx && anyIdx) {
+      arr = [];
+      for (var i = 0; i < geos.length; i++) arr.push(geos[i].index ? geos[i].toNonIndexed() : geos[i]);
+    }
+    var first = arr[0];
+    var names = Object.keys(first.attributes);
+    var hasIdx = !!first.index;
+    var total = 0;
+    for (var i = 0; i < arr.length; i++) total += arr[i].attributes.position.count;
+    var merged = new THREE.BufferGeometry();
+    for (var a = 0; a < names.length; a++) {
+      var name = names[a];
+      var itemSize = first.attributes[name].itemSize;
+      var buf = new Float32Array(total * itemSize);
+      var off = 0;
+      for (var i = 0; i < arr.length; i++) {
+        var at = arr[i].attributes[name];
+        if (!at) continue;
+        var s = at.array;
+        for (var j = 0; j < s.length; j++) buf[off++] = s[j];
+      }
+      merged.setAttribute(name, new THREE.BufferAttribute(buf, itemSize));
+    }
+    if (hasIdx) {
+      var totalIdx = 0;
+      for (var i = 0; i < arr.length; i++) if (arr[i].index) totalIdx += arr[i].index.count;
+      var idxBuf = new Uint32Array(totalIdx);
+      var iOff = 0, vOff = 0;
+      for (var i = 0; i < arr.length; i++) {
+        var idx = arr[i].index;
+        if (idx) for (var j = 0; j < idx.count; j++) idxBuf[iOff++] = idx.getX(j) + vOff;
+        vOff += arr[i].attributes.position.count;
+      }
+      merged.setIndex(new THREE.BufferAttribute(idxBuf, 1));
+    }
+    return merged;
+  }
+
+  /* Batching — accumulate geometry per material, flush at end */
+  var BATCH = new Map();
+  function pushGeo(mat, geo) {
+    var arr = BATCH.get(mat);
+    if (!arr) { arr = []; BATCH.set(mat, arr); }
+    arr.push(geo);
+  }
+  function flushBatches(parent) {
+    BATCH.forEach(function (arr, mat) {
+      if (!arr.length) return;
+      var merged = null;
+      try { merged = mergeGeoms(arr); } catch (e) { merged = null; }
+      if (!merged) {
+        for (var i = 0; i < arr.length; i++) parent.add(new THREE.Mesh(arr[i], mat));
+      } else {
+        merged.computeBoundingSphere();
+        merged.computeBoundingBox();
+        parent.add(new THREE.Mesh(merged, mat));
+      }
+    });
+    BATCH.clear();
+  }
+
+  /* ============================================================
+     ROADS + SIDEWALKS
+     Build ribbon meshes from city.streets polylines.
+     ============================================================ */
+  function ribbonFromPolyline(points, width, y) {
+    if (points.length < 2) return null;
+    var verts = [], idx = [], uvs = [];
+    var halfW = width / 2;
+
+    // Compute tangents and perpendiculars
+    for (var i = 0; i < points.length; i++) {
+      var px = points[i][0], pz = points[i][1];
+      var nx, nz;
+      if (i === 0) {
+        nx = points[1][0] - px; nz = points[1][1] - pz;
+      } else if (i === points.length - 1) {
+        nx = px - points[i-1][0]; nz = pz - points[i-1][1];
+      } else {
+        var ax = points[i+1][0] - points[i-1][0];
+        var az = points[i+1][1] - points[i-1][1];
+        nx = ax; nz = az;
+      }
+      var len = Math.sqrt(nx*nx + nz*nz) || 1;
+      nx /= len; nz /= len;
+      // perpendicular in XZ
+      var pxn = -nz, pzn = nx;
+      verts.push(px + pxn * halfW, y, pz + pzn * halfW);
+      verts.push(px - pxn * halfW, y, pz - pzn * halfW);
+      uvs.push(0, i * 0.5, 1, i * 0.5);
+    }
+
+    for (var s = 0; s < points.length - 1; s++) {
+      var a = s * 2, b = s * 2 + 1, c = s * 2 + 2, d = s * 2 + 3;
+      idx.push(a, b, c, b, d, c);
+    }
+
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
+  }
+
+  function buildRoads() {
+    var yRoad = 0.15, yWalk = 0.30;
+    for (var i = 0; i < S.city.streets.length; i++) {
+      var st = S.city.streets[i];
+      var road = ribbonFromPolyline(st.points, st.width, yRoad);
+      if (road) pushGeo(MATS.asphalt, road);
+      var walk = ribbonFromPolyline(st.points, st.width + 4.5, yWalk);
+      if (walk) pushGeo(MATS.sidewalk, walk);
+    }
+  }
+
+  /* ============================================================
+     BUILDING ARCHETYPES
+     One builder per type. Each gets the lot, emits geometry.
+     ============================================================ */
+  function addLedge(w, d, y, t) {
+    // simple 4-sided cornice band
+    var hw = w/2, hd = d/2;
+    pushGeo(MATS.stone, new THREE.BoxGeometry(w + t*2, 0.3, d + t*2).translate(0, y, 0));
+  }
+
+  function buildTower(lot) {
+    var w = lot.w, d = lot.d, h = lot.h;
+    var mat = FACADE_MATS.tower;
+    var gh = 4.5, uh = Math.max(1, h - gh);
+
+    var w4 = new THREE.Matrix4()
+      .makeRotationY(lot.rot)
+      .setPosition(lot.x, 0, lot.z);
+
+    pushGeo(FACADE_MATS.office, boxUV(w, gh, d, 7, gh)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, gh/2, 0))));
+    pushGeo(mat, boxUV(w, uh, d, 5, 4.6)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, gh + uh/2, 0))));
+
+    pushGeo(MATS.stone, new THREE.BoxGeometry(w + 1, 0.7, d + 1)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + 0.35, 0))));
+
+    // Mechanical rooftop
+    var mw = w * 0.55, md = d * 0.55, mh = 3 + RNG() * 3;
+    pushGeo(MATS.metal, new THREE.BoxGeometry(mw, mh, md)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + 0.7 + mh/2, 0))));
+
+    // Spire on ~30% of towers
+    if (RNG() < 0.3) {
+      var sh = 8 + RNG() * 14;
+      pushGeo(MATS.metal, new THREE.CylinderGeometry(0.25, 0.4, sh, 5)
+        .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + mh + sh/2 + 0.7, 0))));
+    }
+  }
+
+  function buildOffice(lot) {
+    var w = lot.w, d = lot.d, h = lot.h;
+    var gh = 4.0, uh = Math.max(1, h - gh);
+    var w4 = new THREE.Matrix4().makeRotationY(lot.rot).setPosition(lot.x, 0, lot.z);
+
+    pushGeo(MATS.sidewalk, boxUV(w, gh, d, 6, gh)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, gh/2, 0))));
+    pushGeo(FACADE_MATS.office, boxUV(w, uh, d, 4, 3.4)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, gh + uh/2, 0))));
+    pushGeo(MATS.stone, new THREE.BoxGeometry(w + 1, 0.6, d + 1)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + 0.3, 0))));
+    pushGeo(MATS.roof, new THREE.BoxGeometry(w + 0.6, 0.4, d + 0.6)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + 0.8, 0))));
+  }
+
+  function buildBlock(lot) {
+    var w = lot.w, d = lot.d, h = lot.h;
+    var w4 = new THREE.Matrix4().makeRotationY(lot.rot).setPosition(lot.x, 0, lot.z);
+    var useGable = RNG() > 0.4;
+
+    pushGeo(FACADE_MATS.block, boxUV(w, h, d, 4, 3.6)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h/2, 0))));
+    pushGeo(MATS.stone, new THREE.BoxGeometry(w + 0.7, 0.5, d + 0.7)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + 0.25, 0))));
+    if (useGable) {
+      var rh = Math.min(w, d) * 0.22 + 0.6;
+      pushGeo(MATS.roof, gableRoof(w + 0.8, d + 0.8, rh)
+        .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + 0.5, 0))));
+    } else {
+      pushGeo(MATS.roof, new THREE.BoxGeometry(w + 0.5, 0.5, d + 0.5)
+        .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + 0.5, 0))));
+    }
+  }
+
+  function buildCreative(lot) {
+    var w = lot.w, d = lot.d, h = lot.h;
+    var w4 = new THREE.Matrix4().makeRotationY(lot.rot).setPosition(lot.x, 0, lot.z);
+    var groundH = 5.5;
+
+    pushGeo(FACADE_MATS.commercial, boxUV(w, groundH, d, 6, groundH)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, groundH/2, 0))));
+
+    var mainH = h - groundH;
+    pushGeo(FACADE_MATS.creative, boxUV(w, mainH, d, 4, 4)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, groundH + mainH/2, 0))));
+
+    // Offset upper mass — creates the "creative" silhouette
+    if (RNG() < 0.6) {
+      var ow = w * 0.6, od = d * 0.6, oh = 4 + RNG() * 8;
+      pushGeo(FACADE_MATS.creative, boxUV(ow, oh, od, 3, 3)
+        .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(w * 0.15, h + oh/2, d * 0.1))));
+    }
+    pushGeo(MATS.metal, new THREE.BoxGeometry(w + 0.3, 0.4, d + 0.3)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + 0.2, 0))));
+  }
+
+  function buildData(lot) {
+    var w = lot.w, d = lot.d, h = lot.h;
+    var w4 = new THREE.Matrix4().makeRotationY(lot.rot).setPosition(lot.x, 0, lot.z);
+
+    pushGeo(FACADE_MATS.data, boxUV(w, h, d, 3, 3)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h/2, 0))));
+    pushGeo(MATS.metal, new THREE.BoxGeometry(w + 1.2, 0.6, d + 1.2)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + 0.3, 0))));
+
+    // Antenna mast
+    var mastH = 6 + RNG() * 10;
+    pushGeo(MATS.metal, new THREE.CylinderGeometry(0.18, 0.25, mastH, 5)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + mastH/2 + 0.6, 0))));
+  }
+
+  function buildCommercial(lot) {
+    var w = lot.w, d = lot.d, h = lot.h;
+    var w4 = new THREE.Matrix4().makeRotationY(lot.rot).setPosition(lot.x, 0, lot.z);
+
+    pushGeo(FACADE_MATS.commercial, boxUV(w, h, d, 4, 3.4)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h/2, 0))));
+    // Awning band
+    pushGeo(MATS.roof, new THREE.BoxGeometry(w + 1.5, 0.3, d + 1.5)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h * 0.35, 0))));
+    pushGeo(MATS.roof, new THREE.BoxGeometry(w + 0.6, 0.5, d + 0.6)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + 0.5, 0))));
+  }
+
+  function buildWarehouse(lot) {
+    var w = lot.w, d = lot.d, h = lot.h;
+    var w4 = new THREE.Matrix4().makeRotationY(lot.rot).setPosition(lot.x, 0, lot.z);
+
+    pushGeo(FACADE_MATS.warehouse, boxUV(w, h, d, 5, 4)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h/2, 0))));
+    // Sawtooth roofline
+    var rh = 3 + RNG() * 2;
+    pushGeo(MATS.metal, pyramidRoof(w + 0.5, d + 0.5, rh)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h, 0))));
+  }
+
+  function buildRowhouse(lot) {
+    var w = lot.w, d = lot.d, h = lot.h;
+    var w4 = new THREE.Matrix4().makeRotationY(lot.rot).setPosition(lot.x, 0, lot.z);
+
+    pushGeo(FACADE_MATS.rowhouse, boxUV(w, h, d, 2.5, 3)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h/2, 0))));
+    var rh = Math.min(w, d) * 0.3 + 0.5;
+    pushGeo(MATS.roof, gableRoof(w + 0.6, d + 0.6, rh)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h, 0))));
+  }
+
+  function buildPavilion(lot) {
+    var w = lot.w, d = lot.d, h = lot.h;
+    var w4 = new THREE.Matrix4().makeRotationY(lot.rot).setPosition(lot.x, 0, lot.z);
+
+    // Podium
+    pushGeo(MATS.marble, new THREE.BoxGeometry(w + 6, 0.6, d + 6)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, 0.3, 0))));
+    // Body
+    pushGeo(FACADE_MATS.pavilion, boxUV(w, h, d, 4, 3)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h/2 + 0.6, 0))));
+    // Flat entablature
+    pushGeo(MATS.stone, new THREE.BoxGeometry(w + 2, 0.8, d + 2)
+      .applyMatrix4(w4.clone().multiply(new THREE.Matrix4().makeTranslation(0, h + 1.0, 0))));
+  }
+
+  var BUILDERS = {
+    tower: buildTower, office: buildOffice, block: buildBlock,
+    creative: buildCreative, data: buildData, commercial: buildCommercial,
+    warehouse: buildWarehouse, rowhouse: buildRowhouse, pavilion: buildPavilion
+  };
+
+  function buildAllLots() {
+    var lots = S.city.lots;
+    for (var i = 0; i < lots.length; i++) {
+      var lot = lots[i];
+      var fn = BUILDERS[lot.type] || buildBlock;
+      fn(lot);
+    }
+  }
+
+  /* ============================================================
+     LANDMARKS — five shape classes
+     ============================================================ */
+  function buildSpire(lm) {
+    var r = 8, h = lm.h;
+    var baseW = r * 2.4;
+    // base
+    pushGeo(MATS.stone, new THREE.BoxGeometry(baseW, 8, baseW).translate(lm.x, 4, lm.z));
+    // shaft — tapered
+    pushGeo(FACADE_MATS.tower, new THREE.CylinderGeometry(r * 0.5, r, h - 40, 8).translate(lm.x, 4 + (h - 40) / 2, lm.z));
+    pushGeo(MATS.metal, new THREE.CylinderGeometry(0.6, 1.4, h * 0.35, 6).translate(lm.x, h - 40 + 4 + h * 0.175, lm.z));
+    // crown light
+    pushGeo(MATS.metal, new THREE.SphereGeometry(1.6, 12, 8).translate(lm.x, h + 6, lm.z));
+  }
+
+  function buildCivicDome(lm) {
+    var w = 44, d = 40, bodyH = lm.h * 0.55;
+    pushGeo(MATS.marble, new THREE.BoxGeometry(w + 8, 1.0, d + 8).translate(lm.x, 0.5, lm.z));
+    pushGeo(FACADE_MATS.pavilion, boxUV(w, bodyH, d, 4, 3).translate(lm.x, bodyH / 2 + 1, lm.z));
+    pushGeo(MATS.stone, new THREE.BoxGeometry(w + 2, 1.4, d + 2).translate(lm.x, bodyH + 1.7, lm.z));
+    var drum = new THREE.CylinderGeometry(8, 8.6, 6, 12);
+    pushGeo(MATS.marble, drum.translate(lm.x, bodyH + 5.4, lm.z));
+    var dome = new THREE.SphereGeometry(9, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    pushGeo(MATS.roof, dome.translate(lm.x, bodyH + 8.4, lm.z));
+    pushGeo(MATS.metal, new THREE.ConeGeometry(0.8, 4, 6).translate(lm.x, bodyH + 18, lm.z));
+  }
+
+  function buildSlab(lm) {
+    var w = 44, d = 26, h = lm.h;
+    pushGeo(FACADE_MATS.office, boxUV(w, h, d, 5, 3.6).translate(lm.x, h / 2, lm.z));
+    pushGeo(MATS.metal, new THREE.BoxGeometry(w + 3, 0.6, d + 3).translate(lm.x, h + 0.4, lm.z));
+    pushGeo(MATS.metal, new THREE.BoxGeometry(w * 0.6, 4, d * 0.6).translate(lm.x, h + 2.6, lm.z));
+  }
+
+  function buildPavilionLandmark(lm) {
+    var w = 26, d = 22, h = lm.h;
+    pushGeo(MATS.marble, new THREE.BoxGeometry(w + 8, 0.8, d + 8).translate(lm.x, 0.4, lm.z));
+    pushGeo(FACADE_MATS.pavilion, boxUV(w, h, d, 4, 3).translate(lm.x, h / 2 + 0.8, lm.z));
+    pushGeo(MATS.stone, new THREE.BoxGeometry(w + 2, 1, d + 2).translate(lm.x, h + 1.3, lm.z));
+    // small gable
+    pushGeo(MATS.roof, gableRoof(w + 1, d + 1, 3).translate(lm.x, h + 1.8, lm.z));
+  }
+
+  function buildLandmarkTower(lm) {
+    var w = 18, d = 18, h = lm.h;
+    pushGeo(FACADE_MATS.landmark, boxUV(w, h, d, 4, 4).translate(lm.x, h / 2, lm.z));
+    pushGeo(MATS.stone, new THREE.BoxGeometry(w + 3, 1, d + 3).translate(lm.x, h + 0.5, lm.z));
+    pushGeo(MATS.metal, new THREE.CylinderGeometry(0.3, 0.6, 6, 6).translate(lm.x, h + 3.5, lm.z));
+  }
+
+  function buildLandmarks() {
+    for (var i = 0; i < S.city.landmarks.length; i++) {
+      var lm = S.city.landmarks[i];
+      switch (lm.id) {
+        case 'spire':    buildSpire(lm); break;
+        case 'cathedral':buildCivicDome(lm); break;
+        case 'exchange':
+        case 'piazza':   buildCivicDome(lm); break;
+        case 'index':    buildSlab(lm); break;
+        case 'signal':   buildSlab({ x:lm.x, z:lm.z, h:lm.h }); break;
+        case 'webhub':
+        case 'glassworks':
+        case 'observat': buildLandmarkTower(lm); break;
+        case 'market':
+        case 'bowl':
+        case 'arcade':   buildPavilionLandmark(lm); break;
+        case 'pier':
+        case 'beacon':   buildPavilionLandmark(lm); break;
+        case 'gallery':
+        case 'amphithe':
+        case 'cemetery':
+        case 'linden':
+        case 'ivy':      buildPavilionLandmark(lm); break;
+        default:         buildLandmarkTower(lm);
+      }
+    }
+  }
+
+  /* ============================================================
+     PUBLIC SPACES — parks, greens, plazas
+     ============================================================ */
+  function buildPublicSpaces() {
+    for (var i = 0; i < S.city.publicSpaces.length; i++) {
+      var p = S.city.publicSpaces[i];
+      if (p.kind === 'plaza') {
+        var g = new THREE.CircleGeometry(p.radius, 32);
+        g.rotateX(-Math.PI / 2);
+        pushGeo(MATS.marble, g.translate(p.x, 0.35, p.z));
+      } else {
+        var gg = new THREE.CircleGeometry(p.radius, 32);
+        gg.rotateX(-Math.PI / 2);
+        pushGeo(MATS.lawn, gg.translate(p.x, 0.32, p.z));
+      }
+    }
+  }
+
+  /* ============================================================
+     RUN
+     ============================================================ */
+  var group = new THREE.Group();
+  group.name = 'santinopole-buildings';
+
+  buildRoads();
+  buildAllLots();
+  buildLandmarks();
+  buildPublicSpaces();
+  flushBatches(group);
+
+  /* ============================================================
+     EXPORT
+     ============================================================ */
+  S.buildings = {
+    group: group,
+    materials: MATS,
+    facadeMaterials: FACADE_MATS,
+    // environment.js will set emissiveIntensity on these at night
+    setNight: function (factor) {
+      var lit = Math.pow(Math.max(0, factor), 1.3) * 1.5;
+      Object.keys(FACADE_MATS).forEach(function (k) {
+        FACADE_MATS[k].emissiveIntensity = lit;
+      });
+    },
+    // Debug
+    count: (function () {
+      var c = 0;
+      group.traverse(function (o) { if (o.isMesh) c++; });
+      return c;
+    })()
+  };
+
+  S.log(
+    'buildings',
+    true,
+    S.city.lots.length + ' lots · ' +
+    S.city.landmarks.length + ' landmarks · ' +
+    S.buildings.count + ' meshes'
+  );
+
+})();
