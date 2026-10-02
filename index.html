@@ -1,115 +1,603 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
-<meta name="theme-color" content="#050708" />
-<meta name="description" content="SANTINOPOLE — WEB • SEO • GROWTH. A digital city." />
-<title>SANTINOPOLE — WEB • SEO • GROWTH</title>
+  <meta charset="UTF-8" />
 
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-<link rel="preconnect" href="https://unpkg.com" crossorigin />
-<link rel="preconnect" href="https://esm.sh" crossorigin />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  />
 
-<link rel="stylesheet" href="style.css" />
+  <meta
+    name="description"
+    content="SANTINOPOLE DIGITAL — WEB • SEO • GROWTH."
+  />
 
-<!-- Critical fallback: loader and error screen stay readable even if style.css fails -->
-<style>
-  html, body { margin: 0; padding: 0; background: #050708; color: #f6efe0; overflow-x: hidden; }
-  #loader, #err { font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-  #loader { position: fixed; inset: 0; z-index: 50; background: #050708; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 24px; text-align: center; }
-  #loader.done { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .5s ease, visibility .5s; }
-  #err { position: fixed; inset: 0; z-index: 99; display: none; align-items: center; justify-content: center; background: #050708; padding: 32px; text-align: center; }
-</style>
+  <meta name="theme-color" content="#050505" />
+  <meta name="color-scheme" content="dark" />
+
+  <title>SANTINOPOLE DIGITAL — WEB • SEO • GROWTH</title>
+
+  <!--
+    SANTINOPOLE
+    Cinematic digital-city experience
+  -->
+
+  <!-- GSAP -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"
+  ></script>
+
+  <!-- GSAP ScrollTrigger -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"
+  ></script>
 </head>
+
 <body>
 
-  <!-- ============ WEBGL CANVAS ============ -->
-  <canvas id="scene" aria-hidden="true"></canvas>
+  <!-- =========================================================
+       APPLICATION ROOT
+  ========================================================== -->
 
-  <!-- ============ NARRATIVE HUD ============ -->
-  <div id="ui" aria-hidden="false">
+  <div id="app">
 
-    <header class="hud-top">
-      <div class="brand">
-        <span class="brand-name">Santinopole</span>
-        <span class="brand-sub">WEB • SEO • GROWTH</span>
+    <!-- =======================================================
+         WEBGL / THREE.JS STAGE
+    ======================================================== -->
+
+    <div id="scene" aria-hidden="true">
+      <canvas
+        id="scene-canvas"
+        data-engine="santinopole"
+      ></canvas>
+
+      <div id="scene-vignette"></div>
+      <div id="scene-grain"></div>
+      <div id="scene-fade"></div>
+    </div>
+
+    <!-- =======================================================
+         LOADER
+    ======================================================== -->
+
+    <div id="loader" aria-hidden="true">
+      <div class="loader-inner">
+
+        <div class="loader-brand">
+          <span>SANTINOPOLE</span>
+          <span>DIGITAL</span>
+        </div>
+
+        <div class="loader-line">
+          <span id="loader-progress"></span>
+        </div>
+
+        <div class="loader-status">
+          INITIALIZING CITY
+        </div>
+
       </div>
-      <div class="meta">
-        <div class="meta-row">Sector <b id="hudSector">ARRIVAL</b></div>
-        <div class="meta-row">Lon <b id="hudLon">—</b></div>
-        <div class="meta-row">Lat <b id="hudLat">—</b></div>
-        <div class="meta-row" id="hudClock">—</div>
+    </div>
+
+    <!-- =======================================================
+         WEBGL FALLBACK
+    ======================================================== -->
+
+    <div id="webgl-fallback" hidden>
+      <div class="fallback-inner">
+
+        <p class="fallback-eyebrow">
+          SANTINOPOLE DIGITAL
+        </p>
+
+        <h1>
+          ENTER<br />
+          SANTINOPOLE
+        </h1>
+
+        <p>
+          This experience requires a modern browser with WebGL support.
+        </p>
+
       </div>
+    </div>
+
+    <!-- =======================================================
+         TOP NAVIGATION
+    ======================================================== -->
+
+    <header id="site-header">
+
+      <a
+        href="#arrival"
+        class="brand"
+        data-nav="arrival"
+        aria-label="SANTINOPOLE Digital home"
+      >
+        <span class="brand-primary">SANTINOPOLE</span>
+        <span class="brand-secondary">DIGITAL</span>
+      </a>
+
+      <div class="header-center">
+        <span class="header-status">
+          WEB <i></i> SEO <i></i> GROWTH
+        </span>
+      </div>
+
+      <button
+        id="menu-toggle"
+        class="menu-toggle"
+        type="button"
+        aria-label="Open navigation"
+        aria-expanded="false"
+      >
+        <span></span>
+        <span></span>
+      </button>
+
     </header>
 
-    <section class="chapter" id="chapter" aria-live="polite">
-      <div class="chapter-num" id="chNum"></div>
-      <h1 class="chapter-title" id="chTitle"></h1>
-      <p class="chapter-text" id="chText"></p>
-    </section>
+    <!-- =======================================================
+         CINEMATIC NAVIGATION
+    ======================================================== -->
 
-    <footer class="hud-bottom">
-      <div class="progress">
-        <div class="progress-track">
-          <div class="progress-fill" id="progressFill"></div>
-        </div>
-        <div class="progress-labels">
-          <span id="progressPct">00%</span>
-          <span id="progressAct">ACT I — ARRIVAL</span>
-        </div>
+    <aside id="city-navigation">
+
+      <div class="navigation-label">
+        CITY NAVIGATION
       </div>
-      <div class="hint" id="hint">
-        <span class="hint-bar"></span>
-        <span class="hint-label">Scroll to enter</span>
+
+      <nav aria-label="SANTINOPOLE districts">
+
+        <a href="#arrival" data-nav="arrival">
+          <span>01</span>
+          <span>ARRIVAL</span>
+        </a>
+
+        <a href="#descent" data-nav="descent">
+          <span>02</span>
+          <span>DESCENT</span>
+        </a>
+
+        <a href="#streets" data-nav="streets">
+          <span>03</span>
+          <span>THE STREETS</span>
+        </a>
+
+        <a href="#web" data-nav="web">
+          <span>04</span>
+          <span>WEB</span>
+        </a>
+
+        <a href="#seo" data-nav="seo">
+          <span>05</span>
+          <span>SEO</span>
+        </a>
+
+        <a href="#growth" data-nav="growth">
+          <span>06</span>
+          <span>GROWTH</span>
+        </a>
+
+        <a href="#santinopolitans" data-nav="santinopolitans">
+          <span>07</span>
+          <span>SANTINOPOLITANS</span>
+        </a>
+
+        <a href="#reveal" data-nav="reveal">
+          <span>08</span>
+          <span>CITY REVEAL</span>
+        </a>
+
+      </nav>
+
+    </aside>
+
+    <!-- =======================================================
+         MENU OVERLAY
+    ======================================================== -->
+
+    <div id="menu-panel" aria-hidden="true">
+
+      <div class="menu-panel-inner">
+
+        <div class="menu-heading">
+          NAVIGATE
+        </div>
+
+        <nav class="menu-links">
+
+          <a href="#arrival" data-nav="arrival">
+            <span>01</span>
+            ARRIVAL
+          </a>
+
+          <a href="#web" data-nav="web">
+            <span>02</span>
+            WEB
+          </a>
+
+          <a href="#seo" data-nav="seo">
+            <span>03</span>
+            SEO
+          </a>
+
+          <a href="#growth" data-nav="growth">
+            <span>04</span>
+            GROWTH
+          </a>
+
+          <a href="#santinopolitans" data-nav="santinopolitans">
+            <span>05</span>
+            SANTINOPOLITANS
+          </a>
+
+          <a href="#reveal" data-nav="reveal">
+            <span>06</span>
+            CITY REVEAL
+          </a>
+
+        </nav>
+
+        <div class="menu-footer">
+          SANTINOPOLE DIGITAL
+        </div>
+
       </div>
+
+    </div>
+
+    <!-- =======================================================
+         CINEMATIC STORY LAYER
+    ======================================================== -->
+
+    <main id="story">
+
+      <!-- =====================================================
+           01 — ARRIVAL
+      ====================================================== -->
+
+      <section
+        id="arrival"
+        class="story-section story-arrival"
+        data-scene="arrival"
+        data-index="0"
+      >
+
+        <div class="story-content story-content-center">
+
+          <div class="story-kicker">
+            A DIGITAL METROPOLIS
+          </div>
+
+          <h1 class="story-title story-title-hero">
+            SANTINOPOLE
+          </h1>
+
+          <div class="story-subtitle">
+            DIGITAL
+          </div>
+
+          <div class="story-services">
+            WEB <i></i> SEO <i></i> GROWTH
+          </div>
+
+        </div>
+
+        <div class="scroll-indicator">
+          <span>SCROLL TO ENTER</span>
+          <span class="scroll-line"></span>
+        </div>
+
+      </section>
+
+      <!-- =====================================================
+           02 — DESCENT
+      ====================================================== -->
+
+      <section
+        id="descent"
+        class="story-section"
+        data-scene="descent"
+        data-index="1"
+      >
+
+        <div class="story-content story-content-left">
+
+          <div class="story-kicker">
+            02 / DESCENT
+          </div>
+
+          <h2 class="story-title">
+            THE CITY<br />
+            BELOW.
+          </h2>
+
+          <p class="story-copy">
+            From the skyline to the street,
+            every layer of SANTINOPOLE is built
+            to move.
+          </p>
+
+        </div>
+
+      </section>
+
+      <!-- =====================================================
+           03 — STREETS
+      ====================================================== -->
+
+      <section
+        id="streets"
+        class="story-section"
+        data-scene="streets"
+        data-index="2"
+      >
+
+        <div class="story-content story-content-right">
+
+          <div class="story-kicker">
+            03 / THE STREETS
+          </div>
+
+          <h2 class="story-title">
+            WELCOME<br />
+            TO SANTINOPOLE.
+          </h2>
+
+          <p class="story-copy">
+            People. Businesses. Movement.
+            A city that never feels finished.
+          </p>
+
+        </div>
+
+      </section>
+
+      <!-- =====================================================
+           04 — WEB
+      ====================================================== -->
+
+      <section
+        id="web"
+        class="story-section"
+        data-scene="web"
+        data-index="3"
+      >
+
+        <div class="story-content story-content-left">
+
+          <div class="story-kicker">
+            04 / WEB
+          </div>
+
+          <h2 class="story-title">
+            BUILD<br />
+            THE INFRASTRUCTURE.
+          </h2>
+
+          <p class="story-copy">
+            Digital products, websites and systems
+            designed as places people actually use.
+          </p>
+
+        </div>
+
+      </section>
+
+      <!-- =====================================================
+           05 — SEO
+      ====================================================== -->
+
+      <section
+        id="seo"
+        class="story-section"
+        data-scene="seo"
+        data-index="4"
+      >
+
+        <div class="story-content story-content-right">
+
+          <div class="story-kicker">
+            05 / SEO
+          </div>
+
+          <h2 class="story-title">
+            MAKE THE<br />
+            CITY DISCOVERABLE.
+          </h2>
+
+          <p class="story-copy">
+            Search visibility becomes infrastructure:
+            connected, indexed and built to be found.
+          </p>
+
+        </div>
+
+      </section>
+
+      <!-- =====================================================
+           06 — GROWTH
+      ====================================================== -->
+
+      <section
+        id="growth"
+        class="story-section"
+        data-scene="growth"
+        data-index="5"
+      >
+
+        <div class="story-content story-content-left">
+
+          <div class="story-kicker">
+            06 / GROWTH
+          </div>
+
+          <h2 class="story-title">
+            MAKE<br />
+            BUSINESS MOVE.
+          </h2>
+
+          <p class="story-copy">
+            Visibility becomes traffic.
+            Traffic becomes attention.
+            Attention becomes growth.
+          </p>
+
+        </div>
+
+      </section>
+
+      <!-- =====================================================
+           07 — SANTINOPOLITANS
+      ====================================================== -->
+
+      <section
+        id="santinopolitans"
+        class="story-section"
+        data-scene="santinopolitans"
+        data-index="6"
+      >
+
+        <div class="story-content story-content-center">
+
+          <div class="story-kicker">
+            07 / THE CITIZENS
+          </div>
+
+          <h2 class="story-title">
+            THE<br />
+            SANTINOPOLITANS.
+          </h2>
+
+          <p class="story-copy">
+            Thousands of people.
+            Thousands of businesses.
+            One connected digital civilization.
+          </p>
+
+        </div>
+
+      </section>
+
+      <!-- =====================================================
+           08 — REVEAL
+      ====================================================== -->
+
+      <section
+        id="reveal"
+        class="story-section story-reveal"
+        data-scene="reveal"
+        data-index="7"
+      >
+
+        <div class="story-content story-content-center">
+
+          <div class="story-kicker">
+            08 / THE CITY REVEAL
+          </div>
+
+          <h2 class="story-title story-title-final">
+            BUILD<br />
+            YOUR DISTRICT.
+          </h2>
+
+          <p class="story-copy">
+            We don't just build websites.
+            We build digital cities for businesses.
+          </p>
+
+          <div class="story-actions">
+
+            <a
+              href="#arrival"
+              class="story-button"
+              data-action="enter"
+            >
+              ENTER SANTINOPOLE
+            </a>
+
+            <a
+              href="#growth"
+              class="story-button story-button-secondary"
+              data-action="district"
+            >
+              BUILD YOUR DISTRICT
+            </a>
+
+          </div>
+
+          <div class="final-signature">
+            SANTINOPOLE DIGITAL
+            <span>WEB • SEO • GROWTH</span>
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- =======================================================
+         SIDE HUD
+    ======================================================== -->
+
+    <div id="city-hud" aria-hidden="true">
+
+      <div class="hud-item">
+        <span class="hud-label">DISTRICT</span>
+        <span id="hud-district">ARRIVAL</span>
+      </div>
+
+      <div class="hud-item">
+        <span class="hud-label">SYSTEM</span>
+        <span>ONLINE</span>
+      </div>
+
+      <div class="hud-item">
+        <span class="hud-label">CITY</span>
+        <span>SANTINOPOLE</span>
+      </div>
+
+    </div>
+
+    <!-- =======================================================
+         FOOTER
+    ======================================================== -->
+
+    <footer id="site-footer">
+
+      <span>
+        SANTINOPOLE DIGITAL
+      </span>
+
+      <span>
+        WEB • SEO • GROWTH
+      </span>
+
+      <span>
+        © <span id="year"></span>
+      </span>
+
     </footer>
 
   </div>
 
-  <!-- ============ CITY WAYFINDING NAV ============ -->
-  <nav class="wayfinding" id="wayfinding" aria-label="City navigation">
-    <ul>
-      <li><a href="#city"    data-district="city">CITY</a></li>
-      <li><a href="#web"     data-district="web">WEB</a></li>
-      <li><a href="#seo"     data-district="seo">SEO</a></li>
-      <li><a href="#growth"  data-district="growth">GROWTH</a></li>
-      <li><a href="#works"   data-district="works">WORKS</a></li>
-      <li><a href="#about"   data-district="about">ABOUT</a></li>
-      <li><a href="#contact" data-district="contact">CONTACT</a></li>
-    </ul>
-  </nav>
+  <!-- =========================================================
+       JAVASCRIPT ENTRY
+  ========================================================== -->
 
-  <!-- ============ SCROLL TRACK (height set by JS) ============ -->
-  <div id="spacer" aria-hidden="true"></div>
+  <script type="module" src="./main.js"></script>
 
-  <!-- ============ BOOT LOADER WITH SELF-DIAGNOSTIC LOG ============ -->
-  <div id="loader" role="status" aria-live="polite">
-    <div class="loader-brand">SANTINOPOLE</div>
-    <div class="loader-sub">Entering the city</div>
-    <div class="loader-bar"><i id="loaderBar"></i></div>
-    <div class="loader-log" id="loaderLog"></div>
-  </div>
+  <!-- =========================================================
+       BASIC RUNTIME INITIALIZATION
+  ========================================================== -->
 
-  <!-- ============ ERROR FALLBACK ============ -->
-  <div id="err" role="alert">
-    <div class="err-inner">
-      <div class="err-title">SANTINOPOLE</div>
-      <div class="err-msg" id="errMsg">Something went wrong.</div>
-      <div class="err-hint">Please reload the page.</div>
-    </div>
-  </div>
-
-  <!-- ============ SCRIPT LOAD ORDER — DO NOT REARRANGE ============ -->
-  <script src="three.js"></script>
-  <script src="performance.js"></script>
-  <script src="city.js"></script>
-  <script src="buildings.js"></script>
-  <script src="environment.js"></script>
-  <script src="scrollexperience.js"></script>
-  <script src="interface.js"></script>
-  <script src="main.js"></script>
+  <script>
+    document.getElementById("year").textContent =
+      new Date().getFullYear();
+  </script>
 
 </body>
 </html>
