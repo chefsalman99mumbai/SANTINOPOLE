@@ -1,39 +1,26 @@
 /* ============================================================
-   SANTINOPOLE — scrollexperience.js
+   SANTINOPOLE — scrollexperience.js — MARINE DRIVE
    ------------------------------------------------------------
-   The conductor. Owns the frame loop. Drives the camera along
-   the 8-act path. Reads + smooths scroll. Broadcasts progress
-   and act-change events to any subscriber (interface.js).
-
-   Depends on: three.js, performance.js, environment.js
-   Exposes:    window.SANTINOPOLE.scrollexperience
+   Camera flies along the C-curve. 8 acts. Dawn → sunset.
    ============================================================ */
 
 (function () {
   'use strict';
-
   var S = window.SANTINOPOLE;
   var THREE = window.THREE;
-
-  if (!S || !S.environment || !S.performance || !THREE) {
-    console.error('[scrollexperience.js] three.js, performance.js and environment.js must load first.');
-    return;
-  }
+  if (!S || !S.environment || !S.performance || !THREE) { console.error('deps'); return; }
   var Q = S.performance.Q;
   var camera = S.environment.camera;
 
-  /* ============================================================
-     1. THE 8 ACTS
-     ============================================================ */
   var ACTS = [
-    { id: 1, name: 'ARRIVAL',         subtitle: 'The city appears' },
-    { id: 2, name: 'DESCENT',         subtitle: 'Through the atmosphere' },
-    { id: 3, name: 'THE STREETS',     subtitle: 'Boulevard level' },
-    { id: 4, name: 'FASHION',         subtitle: 'The Fashion District' },
-    { id: 5, name: 'SHOPPING',        subtitle: 'The Grand Corso' },
-    { id: 6, name: 'CANAL',           subtitle: 'Canal Quarter restaurants' },
-    { id: 7, name: 'SANTINOPOLITANS', subtitle: 'The people' },
-    { id: 8, name: 'THE CITY REVEAL', subtitle: 'The endless city' }
+    { id: 1, name: 'ARRIVAL',      subtitle: 'The curve appears' },
+    { id: 2, name: 'DESCENT',      subtitle: 'Down to the shore' },
+    { id: 3, name: 'THE STREET',   subtitle: 'Boulevard level' },
+    { id: 4, name: 'THE FACADES',  subtitle: 'Art Deco morning' },
+    { id: 5, name: 'THE PROMENADE',subtitle: 'Along the sea wall' },
+    { id: 6, name: 'CHOWPATTY',    subtitle: 'The end of the arc' },
+    { id: 7, name: 'THE TURN',     subtitle: 'Looking back' },
+    { id: 8, name: 'THE NECKLACE', subtitle: 'Sunset over the sea' }
   ];
 
   function actIndexAt(p) {
@@ -44,59 +31,63 @@
   }
 
   /* ============================================================
-     2. CAMERA PATH — Milan-focused beats
+     CAMERA PATH — hand-authored beats along the curve
      ============================================================ */
   var PATH = [
-    /* ACT 01 — ARRIVAL (0.000 → 0.125) */
-    { p: 0.000, pos: [   0, 1250, 1500], look: [   0,  60,  -60], fov: 62 },
-    { p: 0.060, pos: [   0,  980, 1220], look: [   0,  50,  -40], fov: 61 },
-    { p: 0.125, pos: [   0,  720,  920], look: [   0,  45,  -20], fov: 59 },
+    /* ---- ACT I — ARRIVAL (0.000 – 0.125) ----
+       High above the Arabian Sea, far out. The whole curve visible. Dawn. */
+    { p: 0.000, pos: [  760, 1000,  950], look: [ 450,  30, -150], fov: 62 },
+    { p: 0.060, pos: [  700,  800,  780], look: [ 450,  30, -150], fov: 61 },
+    { p: 0.125, pos: [  630,  540,  560], look: [ 420,  40, -130], fov: 59 },
 
-    /* ACT 02 — DESCENT (0.125 → 0.250) */
-    { p: 0.165, pos: [  20,  540,  760], look: [   0,  45,  -20], fov: 57 },
-    { p: 0.205, pos: [  60,  340,  600], look: [   0,  40,  -10], fov: 56 },
-    { p: 0.250, pos: [  80,  180,  480], look: [   0,  35,  -10], fov: 55 },
+    /* ---- ACT II — DESCENT (0.125 – 0.250) ----
+       Fall through morning haze toward the shoreline. */
+    { p: 0.165, pos: [  520,  320,  320], look: [ 360,  40,  -90], fov: 57 },
+    { p: 0.205, pos: [  340,  160,  160], look: [ 260,  35,  -60], fov: 56 },
+    { p: 0.250, pos: [  190,   72,   50], look: [ 200,  22,  -30], fov: 55 },
 
-    /* ACT 03 — THE STREETS (0.250 → 0.375) */
-    { p: 0.275, pos: [  60,   70,  400], look: [   0,  20,  200], fov: 56 },
-    { p: 0.305, pos: [  40,   14,  320], look: [   0,  10,  160], fov: 54 },
-    { p: 0.340, pos: [  50,    8,  240], look: [   0,  10,   80], fov: 54 },
-    { p: 0.375, pos: [ 120,    6,  180], look: [  80,   8,   60], fov: 55 },
+    /* ---- ACT III — THE STREET (0.250 – 0.375) ----
+       Street level at the start of the curve. Buildings left, sea right. */
+    { p: 0.275, pos: [   80,   24,   15], look: [ 220,  20,  -30], fov: 55 },
+    { p: 0.305, pos: [  100,   10,    8], look: [ 300,  18,  -50], fov: 54 },
+    { p: 0.345, pos: [  200,    8,  -12], look: [ 400,  16,  -70], fov: 54 },
+    { p: 0.375, pos: [  300,    8,  -32], look: [ 500,  16,  -95], fov: 55 },
 
-    /* ACT 04 — FASHION (0.375 → 0.500) — Quadrilatero della Moda */
-    { p: 0.410, pos: [ 200,   40,  120], look: [ 240,  30,  -40], fov: 56 },
-    { p: 0.445, pos: [ 200,   26,  -40], look: [ 180,  20, -140], fov: 56 },
-    { p: 0.480, pos: [ 140,   20, -100], look: [ 140,  16, -180], fov: 58 },
-    { p: 0.500, pos: [ 100,   14, -140], look: [ 140,  12, -220], fov: 58 },
+    /* ---- ACT IV — THE FACADES (0.375 – 0.500) ----
+       Cruising along, watching the Art Deco palazzi slide by. */
+    { p: 0.410, pos: [  380,    7,  -52], look: [ 560,  15, -110], fov: 55 },
+    { p: 0.445, pos: [  450,    7,  -75], look: [ 630,  15, -130], fov: 54 },
+    { p: 0.480, pos: [  520,    8,  -98], look: [ 700,  15, -155], fov: 54 },
+    { p: 0.500, pos: [  560,    9, -112], look: [ 740,  18, -170], fov: 55 },
 
-    /* ACT 05 — SHOPPING (0.500 → 0.625) — Corso Buenos Aires */
-    { p: 0.535, pos: [ 240,   40,  -60], look: [ 340,  30,  -60], fov: 58 },
-    { p: 0.570, pos: [ 380,   24,  -40], look: [ 480,  20,  -60], fov: 58 },
-    { p: 0.605, pos: [ 500,   16,  -60], look: [ 620,  14,  -80], fov: 58 },
-    { p: 0.625, pos: [ 620,   12,  -80], look: [ 760,  10, -100], fov: 58 },
+    /* ---- ACT V — THE PROMENADE (0.500 – 0.625) ----
+       Lower and slower. Sea wall on the right. Palms. Lamps. */
+    { p: 0.540, pos: [  640,    6, -145], look: [ 810,  16, -210], fov: 54 },
+    { p: 0.580, pos: [  720,    6, -180], look: [ 860,  20, -240], fov: 54 },
+    { p: 0.620, pos: [  800,    9, -215], look: [ 880,  25, -270], fov: 54 },
+    { p: 0.625, pos: [  830,   12, -240], look: [ 900,  28, -285], fov: 55 },
 
-    /* ACT 06 — CANAL (0.625 → 0.750) — Navigli */
-    { p: 0.660, pos: [ 200,   30,  240], look: [ -40,  20,  320], fov: 58 },
-    { p: 0.695, pos: [ -80,   20,  360], look: [-300,  16,  400], fov: 58 },
-    { p: 0.725, pos: [-260,   14,  400], look: [-420,  12,  380], fov: 60 },
-    { p: 0.750, pos: [-400,   12,  420], look: [-540,  10,  400], fov: 60 },
+    /* ---- ACT VI — CHOWPATTY (0.625 – 0.750) ----
+       Reached the far end. Slowing. The last of the road curves out. */
+    { p: 0.660, pos: [  855,   18, -260], look: [ 760,  30, -200], fov: 55 },
+    { p: 0.695, pos: [  830,   30, -235], look: [ 620,  35, -130], fov: 56 },
+    { p: 0.730, pos: [  700,   48, -170], look: [ 480,  40,  -70], fov: 57 },
+    { p: 0.750, pos: [  590,   60, -120], look: [ 380,  50,   20], fov: 59 },
 
-    /* ACT 07 — SANTINOPOLITANS (0.750 → 0.875) */
-    { p: 0.785, pos: [-400,  140,  420], look: [-200,  60,  200], fov: 62 },
-    { p: 0.820, pos: [-200,  300,  200], look: [   0,  60,    0], fov: 62 },
-    { p: 0.855, pos: [   0,  460,   60], look: [   0,  60,  -60], fov: 62 },
-    { p: 0.875, pos: [   0,  620,  -80], look: [   0,  55,  -20], fov: 62 },
+    /* ---- ACT VII — THE TURN (0.750 – 0.875) ----
+       Rise up and turn back over the sea to face the whole curve. */
+    { p: 0.785, pos: [  620,  180,   60], look: [ 450,  50, -150], fov: 60 },
+    { p: 0.820, pos: [  650,  340,  220], look: [ 450,  45, -150], fov: 60 },
+    { p: 0.855, pos: [  660,  500,  370], look: [ 450,  40, -150], fov: 60 },
+    { p: 0.875, pos: [  665,  620,  470], look: [ 450,  35, -150], fov: 60 },
 
-    /* ACT 08 — THE CITY REVEAL (0.875 → 1.000) — endless horizon */
-    { p: 0.895, pos: [   0,  950,  200], look: [   0,  55, -140], fov: 62 },
-    { p: 0.935, pos: [   0, 1400,  600], look: [   0,  40, -260], fov: 64 },
-    { p: 0.965, pos: [   0, 1600,  880], look: [   0,  30, -380], fov: 66 },
-    { p: 1.000, pos: [   0, 1750, 1100], look: [   0,  20, -500], fov: 68 }
+    /* ---- ACT VIII — THE NECKLACE (0.875 – 1.000) ----
+       Highest and widest. The full curve at sunset. */
+    { p: 0.910, pos: [  700,  780,  590], look: [ 450,  30, -150], fov: 62 },
+    { p: 0.955, pos: [  760,  920,  720], look: [ 450,  25, -150], fov: 64 },
+    { p: 1.000, pos: [  810, 1050,  840], look: [ 450,  20, -150], fov: 66 }
   ];
 
-  /* ============================================================
-     3. SAMPLE FOV
-     ============================================================ */
   function sampleFov(p) {
     var i = 0;
     while (i < PATH.length - 2 && p > PATH[i + 1].p) i++;
@@ -106,11 +97,8 @@
     return a.fov + (b.fov - a.fov) * t;
   }
 
-  /* ============================================================
-     4. BUILD CURVES
-     ============================================================ */
   function buildCurve(field) {
-    var N = Math.max(40, Q.pathSamples);
+    var N = Math.max(60, Q.pathSamples || 200);
     var pts = [];
     for (var i = 0; i < N; i++) {
       var t = i / (N - 1);
@@ -128,14 +116,14 @@
     }
     return new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.5);
   }
-  var posCurve  = buildCurve('pos');
+  var posCurve = buildCurve('pos');
   var lookCurve = buildCurve('look');
 
   /* ============================================================
-     5. SCROLL SETUP — LONG ENOUGH TO FEEL ENDLESS
+     SCROLL — long, cinematic
      ============================================================ */
-  var VH_MULT_DESKTOP = 55;   // 5500vh total scroll — around 10 min at slow scroll
-  var VH_MULT_MOBILE  = 35;   // 3500vh — mobile thumb scrolling
+  var VH_MULT_DESKTOP = 42;
+  var VH_MULT_MOBILE  = 26;
   var spacer = document.getElementById('spacer');
 
   function setSpacerHeight() {
@@ -147,44 +135,27 @@
   setSpacerHeight();
 
   var scrollMax = 0;
-  function refreshScrollMax() {
-    scrollMax = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-  }
+  function refreshScrollMax() { scrollMax = Math.max(1, document.documentElement.scrollHeight - window.innerHeight); }
   refreshScrollMax();
 
-  /* ============================================================
-     6. STATE
-     ============================================================ */
   var state = {
-    progress: 0,
-    target: 0,
-    velocity: 0,
-    actIndex: 0,
-    actChanged: false,
-    paused: false,
-    started: false,
-    elapsed: 0,
-    lastFrameTime: 0,
-    rafId: 0
+    progress: 0, target: 0, velocity: 0,
+    actIndex: 0, paused: false, started: false,
+    elapsed: 0, lastFrameTime: 0, rafId: 0
   };
 
   var frameInterval = (Q.fpsCap && Q.fpsCap < 60) ? (1000 / Q.fpsCap) : 0;
-
   var subscribers = [];
   var actListeners = [];
 
   function onProgress(fn) { if (typeof fn === 'function') subscribers.push(fn); }
   function onActChange(fn) { if (typeof fn === 'function') actListeners.push(fn); }
-
-  function emitActChange(index, prevIndex) {
+  function emitActChange(idx, prev) {
     for (var i = 0; i < actListeners.length; i++) {
-      try { actListeners[i](index, prevIndex, ACTS[index]); } catch (e) {}
+      try { actListeners[i](idx, prev, ACTS[idx]); } catch (e) {}
     }
   }
 
-  /* ============================================================
-     7. SCROLL READ
-     ============================================================ */
   function readScroll() {
     if (scrollMax <= 0) refreshScrollMax();
     state.target = Math.max(0, Math.min(1, window.scrollY / scrollMax));
@@ -192,37 +163,18 @@
   readScroll();
   window.addEventListener('scroll', readScroll, { passive: true });
 
-  /* ============================================================
-     8. RESIZE
-     ============================================================ */
   window.addEventListener('resize', function () {
-    setSpacerHeight();
-    refreshScrollMax();
-    readScroll();
+    setSpacerHeight(); refreshScrollMax(); readScroll();
   });
   window.addEventListener('orientationchange', function () {
-    setTimeout(function () {
-      setSpacerHeight();
-      refreshScrollMax();
-      readScroll();
-    }, 260);
+    setTimeout(function () { setSpacerHeight(); refreshScrollMax(); readScroll(); }, 260);
   });
 
-  /* ============================================================
-     9. VISIBILITY
-     ============================================================ */
   document.addEventListener('visibilitychange', function () {
-    if (document.hidden) {
-      state.paused = true;
-    } else {
-      state.paused = false;
-      state.lastFrameTime = performance.now();
-    }
+    if (document.hidden) state.paused = true;
+    else { state.paused = false; state.lastFrameTime = performance.now(); }
   });
 
-  /* ============================================================
-     10. FRAME LOOP
-     ============================================================ */
   var _pos = new THREE.Vector3();
   var _look = new THREE.Vector3();
   var prevProgress = 0;
@@ -238,12 +190,8 @@
         var since = now - state.lastFrameTime;
         if (since < frameInterval - 1) return;
         state.lastFrameTime = now - (since % frameInterval);
-      } else {
-        state.lastFrameTime = now;
-      }
-    } else {
-      state.lastFrameTime = now;
-    }
+      } else state.lastFrameTime = now;
+    } else state.lastFrameTime = now;
 
     var dt = 0.016;
     if (!state.started) {
@@ -257,12 +205,10 @@
 
     readScroll();
 
-    var smoothBase = Q.scrollSmooth || 0.0022;
+    var smoothBase = Q.scrollSmooth || 0.0024;
     var k = 1 - Math.pow(smoothBase, dt);
     state.progress += (state.target - state.progress) * k;
-    if (Math.abs(state.target - state.progress) < 0.00001) {
-      state.progress = state.target;
-    }
+    if (Math.abs(state.target - state.progress) < 0.00001) state.progress = state.target;
     var p = state.progress;
 
     var rawVel = (p - prevProgress) / Math.max(dt, 0.001);
@@ -273,10 +219,11 @@
     _look.copy(lookCurve.getPoint(p));
 
     camera.position.copy(_pos);
-    camera.fov = sampleFov(p) + clamp(state.velocity * 0.4, -4, 6);
+    camera.fov = sampleFov(p) + clamp(state.velocity * 0.5, -5, 6);
     camera.updateProjectionMatrix();
     camera.lookAt(_look);
-    camera.rotateZ(clamp(state.velocity * 0.05, -0.05, 0.05));
+    // Subtle roll from velocity
+    camera.rotateZ(clamp(state.velocity * 0.06, -0.06, 0.06));
 
     var newActIndex = actIndexAt(p);
     if (newActIndex !== state.actIndex) {
@@ -293,9 +240,6 @@
     }
   }
 
-  /* ============================================================
-     11. START / STOP
-     ============================================================ */
   function start() {
     if (state.rafId) return;
     readScroll();
@@ -308,17 +252,11 @@
     if (state.rafId) { cancelAnimationFrame(state.rafId); state.rafId = 0; }
   }
 
-  /* ============================================================
-     12. EXPORT
-     ============================================================ */
   S.scrollexperience = {
-    ACTS: ACTS,
-    PATH: PATH,
+    ACTS: ACTS, PATH: PATH,
     actIndexAt: actIndexAt,
-    start: start,
-    stop: stop,
-    onProgress: onProgress,
-    onActChange: onActChange,
+    start: start, stop: stop,
+    onProgress: onProgress, onActChange: onActChange,
     state: state,
     getProgress: function () { return state.progress; },
     getActIndex: function () { return state.actIndex; },
@@ -327,9 +265,6 @@
   };
 
   S.log('scrollexperience', true,
-    ACTS.length + ' acts · ' +
-    PATH.length + ' keys · ' +
-    'scroll ' + VH_MULT_DESKTOP + 'vh · ' +
-    (frameInterval ? 'capped ' + Q.fpsCap + 'fps' : 'uncapped'));
+    ACTS.length + ' acts · ' + PATH.length + ' keys · Marine Drive');
 
 })();
