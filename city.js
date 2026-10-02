@@ -420,4 +420,56 @@
       { x: -340,  z: 320,   name: 'Navigli',       district: 'navigli'  }
     ];
     for (var k = 0; k < sp.length; k++) {
-      transit.stations.push({ id: 'st-' + k
+      transit.stations.push({ id: 'st-' + k, name: sp[k].name, x: sp[k].x, z: sp[k].z, district: sp[k].district });
+    }
+  }
+  buildTransit();
+
+  /* ============================================================
+     BOUNDARY
+     ============================================================ */
+  function computeBoundary() {
+    var h = MILAN.outerR + 30, pts = [], seg = 64;
+    for (var i = 0; i < seg; i++) {
+      var a = (i / seg) * Math.PI * 2;
+      pts.push([Math.cos(a) * h, Math.sin(a) * h]);
+    }
+    return pts;
+  }
+  var boundary = computeBoundary();
+
+  /* ============================================================
+     EXPORT
+     ============================================================ */
+  S.city = {
+    boundary: boundary,
+    bay: { edgeZ: -720, promenadeZ: -680, width: 2000 },
+    hills: { startZ: 620, peakZ: 1000, maxHeight: 140 },
+    districts: DISTRICTS.map(function (d) {
+      return { id: d.id, name: d.name, type: d.type, character: d.character,
+               center: d.center.slice(), radius: d.radius, density: d.density };
+    }),
+    streets: streets,
+    lots: lots,
+    landmarks: LANDMARKS,
+    publicSpaces: publicSpaces,
+    transit: transit,
+    constants: { streetWidth: MILAN.streetCenter, halfSize: MILAN.outerR, gridStep: MILAN.blockCenter },
+    helpers: { districtAt: districtAt, random: RNG },
+    stats: {
+      districtCount: DISTRICTS.length,
+      streetCount: streets.length,
+      lotCount: lots.length,
+      landmarkCount: LANDMARKS.length,
+      spaceCount: publicSpaces.length,
+      transitLines: transit.lines.length,
+      transitStations: transit.stations.length
+    }
+  };
+
+  S.log('city', true,
+    DISTRICTS.length + ' districts · ' +
+    streets.length + ' streets · ' +
+    lots.length + ' lots (Milan layout)');
+
+})();
