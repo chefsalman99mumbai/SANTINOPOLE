@@ -23,22 +23,24 @@ class SantinopoleEngine {
       frame: 0,
       fps: 60,
       delta: 0,
-      elapsed: 0
+      elapsed: 0,
+      quality: "high"
     };
 
-    this.clock = new THREE.Clock();
+    this.timer = new THREE.Timer();
 
     this.maxDelta = 1 / 30;
 
     this.scene = new THREE.Scene();
 
     this.scene.background =
-      new THREE.Color(0x07090c);
+      new THREE.Color(0x05070a);
 
-    this.scene.fog = new THREE.FogExp2(
-      0x07090c,
-      0.00072
-    );
+    this.scene.fog =
+      new THREE.FogExp2(
+        0x070a0e,
+        0.00068
+      );
 
     this.camera =
       new THREE.PerspectiveCamera(
@@ -79,7 +81,9 @@ class SantinopoleEngine {
     window.addEventListener(
       "resize",
       this.handleResize,
-      { passive: true }
+      {
+        passive: true
+      }
     );
 
     document.addEventListener(
@@ -101,17 +105,14 @@ class SantinopoleEngine {
     });
   }
 
-  /* ------------------------------------------------------------------------
-     RENDERER
-  ------------------------------------------------------------------------ */
-
   createRenderer() {
     const renderer =
       new THREE.WebGLRenderer({
         canvas: this.canvas,
         antialias: true,
         alpha: false,
-        powerPreference: "high-performance",
+        powerPreference:
+          "high-performance",
         stencil: false,
         depth: true
       });
@@ -122,12 +123,13 @@ class SantinopoleEngine {
     renderer.toneMapping =
       THREE.ACESFilmicToneMapping;
 
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure =
+      1.08;
 
     renderer.shadowMap.enabled = true;
 
     renderer.shadowMap.type =
-      THREE.PCFSoftShadowMap;
+      THREE.PCFShadowMap;
 
     renderer.setPixelRatio(
       this.getPixelRatio()
@@ -137,44 +139,33 @@ class SantinopoleEngine {
   }
 
   getPixelRatio() {
-    const deviceRatio =
+    const ratio =
       window.devicePixelRatio || 1;
 
-    const mobile =
-      window.innerWidth < 768;
+    const width =
+      window.innerWidth;
 
-    const tablet =
-      window.innerWidth >= 768 &&
-      window.innerWidth < 1200;
-
-    let cap = 2;
-
-    if (mobile) {
-      cap = 1.5;
-    } else if (tablet) {
-      cap = 1.75;
+    if (width < 768) {
+      return Math.min(ratio, 1.35);
     }
 
-    return Math.min(
-      deviceRatio,
-      cap
-    );
-  }
+    if (width < 1200) {
+      return Math.min(ratio, 1.6);
+    }
 
-  /* ------------------------------------------------------------------------
-     LIGHTING
-  ------------------------------------------------------------------------ */
+    return Math.min(ratio, 2);
+  }
 
   setupLighting() {
     this.hemiLight =
       new THREE.HemisphereLight(
-        0xb9cad4,
-        0x101216,
+        0xc3d3dc,
+        0x080a0e,
         1.35
       );
 
     this.hemiLight.name =
-      "CITY_HEMISPHERE_LIGHT";
+      "SANTINOPOLE_HEMISPHERE";
 
     this.scene.add(
       this.hemiLight
@@ -182,12 +173,12 @@ class SantinopoleEngine {
 
     this.sunLight =
       new THREE.DirectionalLight(
-        0xd8e2e7,
-        2.6
+        0xe0e8ec,
+        2.7
       );
 
     this.sunLight.name =
-      "CITY_SUN_LIGHT";
+      "SANTINOPOLE_SUN";
 
     this.sunLight.position.set(
       -420,
@@ -209,16 +200,16 @@ class SantinopoleEngine {
       1800;
 
     this.sunLight.shadow.camera.left =
-      -700;
+      -750;
 
     this.sunLight.shadow.camera.right =
-      700;
+      750;
 
     this.sunLight.shadow.camera.top =
-      700;
+      750;
 
     this.sunLight.shadow.camera.bottom =
-      -700;
+      -750;
 
     this.sunLight.shadow.bias =
       -0.00015;
@@ -232,8 +223,8 @@ class SantinopoleEngine {
 
     this.fillLight =
       new THREE.DirectionalLight(
-        0x71899a,
-        0.42
+        0x718b9c,
+        0.4
       );
 
     this.fillLight.position.set(
@@ -246,10 +237,6 @@ class SantinopoleEngine {
       this.fillLight
     );
   }
-
-  /* ------------------------------------------------------------------------
-     ATMOSPHERE
-  ------------------------------------------------------------------------ */
 
   setupAtmosphere() {
     const geometry =
@@ -268,26 +255,26 @@ class SantinopoleEngine {
           topColor: {
             value:
               new THREE.Color(
-                0x111922
+                0x17232e
               )
           },
 
           horizonColor: {
             value:
               new THREE.Color(
-                0x27333c
+                0x35434d
               )
           },
 
           bottomColor: {
             value:
               new THREE.Color(
-                0x07090c
+                0x05070a
               )
           },
 
           offset: {
-            value: 0.08
+            value: 0.05
           },
 
           exponent: {
@@ -376,7 +363,7 @@ class SantinopoleEngine {
       );
 
     this.atmosphere.name =
-      "CITY_ATMOSPHERE";
+      "SANTINOPOLE_ATMOSPHERE";
 
     this.atmosphere.frustumCulled =
       false;
@@ -386,11 +373,7 @@ class SantinopoleEngine {
     );
   }
 
-  /* ------------------------------------------------------------------------
-     LOOP
-  ------------------------------------------------------------------------ */
-
-  render() {
+  render(timestamp) {
     if (!this.state.running) {
       return;
     }
@@ -403,8 +386,12 @@ class SantinopoleEngine {
       return;
     }
 
+    this.timer.update(
+      timestamp
+    );
+
     const rawDelta =
-      this.clock.getDelta();
+      this.timer.getDelta();
 
     const delta =
       Math.min(
@@ -412,9 +399,11 @@ class SantinopoleEngine {
         this.maxDelta
       );
 
-    this.state.delta = delta;
+    this.state.delta =
+      delta;
 
-    this.state.elapsed += delta;
+    this.state.elapsed +=
+      delta;
 
     this.state.frame++;
 
@@ -438,51 +427,40 @@ class SantinopoleEngine {
   updateFPS(delta) {
     if (delta <= 0) return;
 
-    const instantFPS =
+    const fps =
       1 / delta;
 
     this.state.fps +=
-      (instantFPS -
+      (fps -
         this.state.fps) *
       0.04;
   }
-
-  /* ------------------------------------------------------------------------
-     RESIZE
-  ------------------------------------------------------------------------ */
 
   handleResize() {
     this.resize();
   }
 
   resize(width, height) {
-    const nextWidth =
+    const w =
       width ||
       window.innerWidth;
 
-    const nextHeight =
+    const h =
       height ||
       window.innerHeight;
 
-    if (
-      nextWidth <= 0 ||
-      nextHeight <= 0
-    ) {
+    if (w <= 0 || h <= 0) {
       return;
     }
 
-    this.state.width =
-      nextWidth;
-
-    this.state.height =
-      nextHeight;
+    this.state.width = w;
+    this.state.height = h;
 
     this.state.pixelRatio =
       this.getPixelRatio();
 
     this.camera.aspect =
-      nextWidth /
-      nextHeight;
+      w / h;
 
     this.camera.updateProjectionMatrix();
 
@@ -491,81 +469,68 @@ class SantinopoleEngine {
     );
 
     this.renderer.setSize(
-      nextWidth,
-      nextHeight,
+      w,
+      h,
       false
     );
 
     this.events.dispatchEvent({
       type: "resize",
-      width: nextWidth,
-      height: nextHeight,
+      width: w,
+      height: h,
       pixelRatio:
         this.state.pixelRatio
     });
   }
 
-  /* ------------------------------------------------------------------------
-     VISIBILITY
-  ------------------------------------------------------------------------ */
-
   handleVisibility() {
-    const visible =
+    this.state.visible =
       !document.hidden;
 
-    this.state.visible =
-      visible;
-
-    /*
-      Reset the clock when returning
-      to the tab so the scene does not
-      receive one giant delta.
-    */
-
-    if (visible) {
-      this.clock.start();
+    if (this.state.visible) {
+      this.timer.reset();
     }
 
     this.events.dispatchEvent({
       type: "visibility",
-      visible
+      visible:
+        this.state.visible
     });
   }
-
-  /* ------------------------------------------------------------------------
-     QUALITY
-  ------------------------------------------------------------------------ */
 
   setQuality(tier = "high") {
     const settings = {
       high: {
-        pixelRatio: Math.min(
-          window.devicePixelRatio || 1,
-          2
-        ),
+        pixelRatio:
+          Math.min(
+            window.devicePixelRatio || 1,
+            2
+          ),
         shadowMap: 2048,
         shadows: true,
-        exposure: 1.05
+        exposure: 1.08
       },
 
       medium: {
-        pixelRatio: Math.min(
-          window.devicePixelRatio || 1,
-          1.5
-        ),
+        pixelRatio:
+          Math.min(
+            window.devicePixelRatio || 1,
+            1.5
+          ),
         shadowMap: 1024,
         shadows: true,
-        exposure: 1.0
+        exposure: 1.02
       },
 
       low: {
-        pixelRatio: Math.min(
-          window.devicePixelRatio || 1,
-          1.15
-        ),
+        pixelRatio:
+          Math.min(
+            window.devicePixelRatio || 1,
+            1.15
+          ),
         shadowMap: 512,
         shadows: false,
-        exposure: 0.95
+        exposure: 0.96
       }
     };
 
@@ -598,17 +563,7 @@ class SantinopoleEngine {
       tier;
 
     this.resize();
-
-    this.events.dispatchEvent({
-      type: "quality",
-      tier,
-      config
-    });
   }
-
-  /* ------------------------------------------------------------------------
-     PUBLIC API
-  ------------------------------------------------------------------------ */
 
   getScene() {
     return this.scene;
@@ -623,7 +578,7 @@ class SantinopoleEngine {
   }
 
   getClock() {
-    return this.clock;
+    return this.timer;
   }
 
   getState() {
@@ -659,10 +614,6 @@ class SantinopoleEngine {
       callback
     );
   }
-
-  /* ------------------------------------------------------------------------
-     DESTROY
-  ------------------------------------------------------------------------ */
 
   destroy() {
     if (!this.state.running) {
@@ -701,18 +652,6 @@ class SantinopoleEngine {
                 material.map.dispose();
               }
 
-              if (material.normalMap) {
-                material.normalMap.dispose();
-              }
-
-              if (material.roughnessMap) {
-                material.roughnessMap.dispose();
-              }
-
-              if (material.metalnessMap) {
-                material.metalnessMap.dispose();
-              }
-
               material.dispose();
             }
           );
@@ -723,10 +662,6 @@ class SantinopoleEngine {
     this.renderer.dispose();
 
     this.renderer.forceContextLoss?.();
-
-    this.events.dispatchEvent({
-      type: "destroy"
-    });
 
     this.events =
       new THREE.EventDispatcher();
