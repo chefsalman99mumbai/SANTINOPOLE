@@ -1,1 +1,115 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#050708" />
+<meta name="description" content="SANTINOPOLE — WEB • SEO • GROWTH. A digital city." />
+<title>SANTINOPOLE — WEB • SEO • GROWTH</title>
+
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="preconnect" href="https://unpkg.com" crossorigin />
+<link rel="preconnect" href="https://esm.sh" crossorigin />
+
+<link rel="stylesheet" href="style.css" />
+
+<!-- Critical fallback: loader and error screen stay readable even if style.css fails -->
+<style>
+  html, body { margin: 0; padding: 0; background: #050708; color: #f6efe0; overflow-x: hidden; }
+  #loader, #err { font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  #loader { position: fixed; inset: 0; z-index: 50; background: #050708; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 24px; text-align: center; }
+  #loader.done { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .5s ease, visibility .5s; }
+  #err { position: fixed; inset: 0; z-index: 99; display: none; align-items: center; justify-content: center; background: #050708; padding: 32px; text-align: center; }
+</style>
+</head>
+<body>
+
+  <!-- ============ WEBGL CANVAS ============ -->
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <!-- ============ NARRATIVE HUD ============ -->
+  <div id="ui" aria-hidden="false">
+
+    <header class="hud-top">
+      <div class="brand">
+        <span class="brand-name">Santinopole</span>
+        <span class="brand-sub">WEB • SEO • GROWTH</span>
+      </div>
+      <div class="meta">
+        <div class="meta-row">Sector <b id="hudSector">ARRIVAL</b></div>
+        <div class="meta-row">Lon <b id="hudLon">—</b></div>
+        <div class="meta-row">Lat <b id="hudLat">—</b></div>
+        <div class="meta-row" id="hudClock">—</div>
+      </div>
+    </header>
+
+    <section class="chapter" id="chapter" aria-live="polite">
+      <div class="chapter-num" id="chNum"></div>
+      <h1 class="chapter-title" id="chTitle"></h1>
+      <p class="chapter-text" id="chText"></p>
+    </section>
+
+    <footer class="hud-bottom">
+      <div class="progress">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-labels">
+          <span id="progressPct">00%</span>
+          <span id="progressAct">ACT I — ARRIVAL</span>
+        </div>
+      </div>
+      <div class="hint" id="hint">
+        <span class="hint-bar"></span>
+        <span class="hint-label">Scroll to enter</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ============ CITY WAYFINDING NAV ============ -->
+  <nav class="wayfinding" id="wayfinding" aria-label="City navigation">
+    <ul>
+      <li><a href="#city"    data-district="city">CITY</a></li>
+      <li><a href="#web"     data-district="web">WEB</a></li>
+      <li><a href="#seo"     data-district="seo">SEO</a></li>
+      <li><a href="#growth"  data-district="growth">GROWTH</a></li>
+      <li><a href="#works"   data-district="works">WORKS</a></li>
+      <li><a href="#about"   data-district="about">ABOUT</a></li>
+      <li><a href="#contact" data-district="contact">CONTACT</a></li>
+    </ul>
+  </nav>
+
+  <!-- ============ SCROLL TRACK (height set by JS) ============ -->
+  <div id="spacer" aria-hidden="true"></div>
+
+  <!-- ============ BOOT LOADER WITH SELF-DIAGNOSTIC LOG ============ -->
+  <div id="loader" role="status" aria-live="polite">
+    <div class="loader-brand">SANTINOPOLE</div>
+    <div class="loader-sub">Entering the city</div>
+    <div class="loader-bar"><i id="loaderBar"></i></div>
+    <div class="loader-log" id="loaderLog"></div>
+  </div>
+
+  <!-- ============ ERROR FALLBACK ============ -->
+  <div id="err" role="alert">
+    <div class="err-inner">
+      <div class="err-title">SANTINOPOLE</div>
+      <div class="err-msg" id="errMsg">Something went wrong.</div>
+      <div class="err-hint">Please reload the page.</div>
+    </div>
+  </div>
+
+  <!-- ============ SCRIPT LOAD ORDER — DO NOT REARRANGE ============ -->
+  <script src="three.js"></script>
+  <script src="performance.js"></script>
+  <script src="city.js"></script>
+  <script src="buildings.js"></script>
+  <script src="environment.js"></script>
+  <script src="scrollexperience.js"></script>
+  <script src="interface.js"></script>
+  <script src="main.js"></script>
+
+</body>
+</html>
