@@ -154,7 +154,7 @@
      5. SCROLL SETUP
      Spacer height determines scroll length.
      ============================================================ */
-  var VH_MULT_DESKTOP = 9;   // 900vh total scroll
+  var VH_MULT_DESKTOP = 20;   // 2000vh total scroll
   var VH_MULT_MOBILE  = 7;   // shorter on mobile (thumb scrolling)
   var spacer = document.getElementById('spacer');
 
