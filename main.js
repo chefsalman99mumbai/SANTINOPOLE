@@ -1,299 +1,513 @@
-/* ============================================================
-   SANTINOPOLE — main.js
-   ------------------------------------------------------------
-   Entry point. Boot orchestrator. Owns the frame-loop start,
-   the loader-to-HUD handoff, the module recovery chain, and
-   the top-level error surface.
+/* =========================================================
+   SANTINOPOLE DIGITAL
+   MAIN — APPLICATION ORCHESTRATOR
+   ========================================================= */
 
-   Depends on: everything (loads last).
-   ============================================================ */
+import SantinopoleEngine from "./three.js";
+import performanceController from "./performance.js";
 
-(function () {
-  'use strict';
+/* =========================================================
+   OPTIONAL SYSTEM IMPORTS
+   ========================================================= */
 
-  /* ============================================================
-     0. THE MOST BASIC CHECK — did three.js itself load?
-     ============================================================ */
-  if (!window.SANTINOPOLE) {
-    var errEl = document.getElementById('err');
-    var errMsg = document.getElementById('errMsg');
-    if (errMsg) {
-      errMsg.innerHTML =
-        'The three.js loader file did not load.<br>' +
-        'Check that <b>three.js</b> exists in the repository root.';
+import City from "./city.js";
+import ScrollExperience from "./scrollexperience.js";
+import Interface from "./interface.js";
+
+/* =========================================================
+   APPLICATION
+   ========================================================= */
+
+class SantinopoleApp {
+  constructor() {
+    this.engine = null;
+    this.city = null;
+    this.scroll = null;
+    this.interface = null;
+
+    this.ready = false;
+    this.destroyed = false;
+
+    this.systems = [];
+  }
+
+  /* =======================================================
+     BOOT
+  ======================================================== */
+
+  async boot() {
+    try {
+      this.setLoadingState(0);
+
+      /*
+        WebGL check before creating the renderer.
+      */
+
+      if (!this.supportsWebGL()) {
+        this.showWebGLFallback();
+        return;
+      }
+
+      this.setLoadingState(15);
+
+      /*
+        CORE ENGINE
+      */
+
+      this.engine =
+        new SantinopoleEngine();
+
+      this.setLoadingState(30);
+
+      /*
+        CITY
+      */
+
+      this.city =
+        new City(
+          this.engine,
+          performanceController
+        );
+
+      this.systems.push(
+        this.city
+      );
+
+      this.setLoadingState(50);
+
+      /*
+        CINEMATIC SCROLL SYSTEM
+      */
+
+      this.scroll =
+        new ScrollExperience(
+          this.engine,
+          this.city,
+          performanceController
+        );
+
+      this.systems.push(
+        this.scroll
+      );
+
+      this.setLoadingState(70);
+
+      /*
+        INTERFACE
+      */
+
+      this.interface =
+        new Interface(
+          this.engine,
+          this.city,
+          this.scroll,
+          performanceController
+        );
+
+      this.systems.push(
+        this.interface
+      );
+
+      this.setLoadingState(90);
+
+      /*
+        CONNECT SYSTEMS
+      */
+
+      this.connectSystems();
+
+      this.setLoadingState(100);
+
+      this.ready = true;
+
+      await this.revealExperience();
+
+      console.log(
+        "%cSANTINOPOLE DIGITAL",
+        "font-size:18px;font-weight:600;letter-spacing:4px;"
+      );
+
+      console.log(
+        "%cWEB • SEO • GROWTH",
+        "font-size:10px;letter-spacing:3px;opacity:.6;"
+      );
+
+    } catch (error) {
+      console.error(
+        "[SANTINOPOLE] Boot failure:",
+        error
+      );
+
+      this.showFallbackError(
+        error
+      );
     }
-    if (errEl) errEl.classList.add('is-visible');
-    var loader = document.getElementById('loader');
-    if (loader) loader.classList.add('done');
-    return;
   }
 
-  var S = window.SANTINOPOLE;
+  /* =======================================================
+     SYSTEM CONNECTION
+  ======================================================== */
 
-  /* ============================================================
-     1. GUARANTEE THE FRAMEWORK EXISTS
-     ============================================================ */
-  if (!S.threeReady) {
-    // three.js file loaded but didn't set up its promise — this
-    // means WebGL is unavailable or the file was corrupted.
-    if (typeof S.fatal === 'function') {
-      S.fatal('WebGL is not available on this device.');
+  connectSystems() {
+    /*
+      Engine resize event.
+    */
+
+    this.engine.on(
+      "resize",
+      () => {
+        this.city?.resize?.();
+        this.scroll?.resize?.();
+        this.interface?.resize?.();
+      }
+    );
+
+    /*
+      Performance changes.
+    */
+
+    performanceController.subscribe(
+      (state) => {
+        this.city?.setQuality?.(
+          state
+        );
+
+        this.scroll?.setQuality?.(
+          state
+        );
+
+        this.interface?.setQuality?.(
+          state
+        );
+      }
+    );
+
+    /*
+      City ready event.
+    */
+
+    this.city?.on?.(
+      "ready",
+      () => {
+        document.body.classList.add(
+          "city-ready"
+        );
+      }
+    );
+
+    /*
+      Global application events.
+    */
+
+    window.addEventListener(
+      "santinopole:navigate",
+      (event) => {
+        this.handleNavigation(
+          event.detail
+        );
+      }
+    );
+  }
+
+  /* =======================================================
+     WEBGL DETECTION
+  ======================================================== */
+
+  supportsWebGL() {
+    try {
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
+
+      const context =
+        canvas.getContext(
+          "webgl2",
+          {
+            failIfMajorPerformanceCaveat:
+              false,
+          }
+        ) ||
+        canvas.getContext(
+          "webgl",
+          {
+            failIfMajorPerformanceCaveat:
+              false,
+          }
+        );
+
+      return Boolean(
+        context
+      );
+    } catch {
+      return false;
     }
-    return;
   }
 
-  /* ============================================================
-     2. SCRIPT LOADER — order-preserving dynamic injection
-     ============================================================ */
-  function loadScript(src) {
-    return new Promise(function (resolve, reject) {
-      var s = document.createElement('script');
-      // Set async BEFORE src for the flag to take effect.
-      s.async = false;
-      s.src = src;
-      s.onload = function () { resolve(src); };
-      s.onerror = function () {
-        reject(new Error('Failed to load ' + src));
-      };
-      document.head.appendChild(s);
-    });
+  /* =======================================================
+     LOADING
+  ======================================================== */
+
+  setLoadingState(
+    progress
+  ) {
+    const progressBar =
+      document.querySelector(
+        "#loader-progress"
+      );
+
+    if (progressBar) {
+      progressBar.style.width =
+        `${Math.min(
+          100,
+          Math.max(
+            0,
+            progress
+          )
+        )}%`;
+    }
+
+    const status =
+      document.querySelector(
+        ".loader-status"
+      );
+
+    if (!status) {
+      return;
+    }
+
+    if (progress < 25) {
+      status.textContent =
+        "INITIALIZING CITY";
+    } else if (progress < 50) {
+      status.textContent =
+        "BUILDING INFRASTRUCTURE";
+    } else if (progress < 75) {
+      status.textContent =
+        "CONNECTING DISTRICTS";
+    } else if (progress < 100) {
+      status.textContent =
+        "CALIBRATING EXPERIENCE";
+    } else {
+      status.textContent =
+        "CITY ONLINE";
+    }
   }
 
-  /* ============================================================
-     3. MODULE PRESENCE CHECK
-     ============================================================ */
-  function has(mod) { return !!S[mod]; }
+  /* =======================================================
+     REVEAL
+  ======================================================== */
 
-  /* ============================================================
-     4. BOOT — the actual "go live" sequence
-     ============================================================ */
-  var booted = false;
+  async revealExperience() {
+    const loader =
+      document.querySelector(
+        "#loader"
+      );
 
-  function boot() {
-    if (booted) return;
-    booted = true;
-    window.__SANTINOPOLE_STARTED = true;
+    if (!loader) {
+      return;
+    }
 
-    // Let one frame settle so the first render happens before we
-    // start hiding things. Two RAFs = guaranteed post-layout.
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-
-        // 1) Start the frame loop. This is what finally makes
-        //    the camera move and the world come alive.
-        try {
-          S.scrollexperience.start();
-        } catch (e) {
-          if (typeof S.fatal === 'function') {
-            S.fatal('Frame loop failed to start.<br>' +
-              (e && e.message ? e.message : 'unknown error'));
-          }
-          return;
-        }
-
-        // 2) Fade the loader, reveal HUD + wayfinding.
-        //    Small delay so the first rendered frame is visible
-        //    behind the fading loader — no black flash.
-        setTimeout(function () {
-          try {
-            S.interface.revealHUD();
-          } catch (e) {
-            // Interface failure is not fatal — the world still runs.
-            console.error('[main] interface reveal failed', e);
-            var loader = document.getElementById('loader');
-            if (loader) loader.classList.add('done');
-          }
-
-          // 3) Confirm live.
-          if (typeof S.log === 'function') {
-            S.log(
-              'main',
-              true,
-              'world running · ' +
-              (S.performance && S.performance.Q ?
-                S.performance.Q.tierName : '—') +
-              ' · ' +
-              (S.scrollexperience.ACTS.length) + ' acts'
+    await new Promise(
+      (resolve) => {
+        requestAnimationFrame(
+          () => {
+            requestAnimationFrame(
+              resolve
             );
           }
-        }, 260);
-      });
-    });
+        );
+      }
+    );
+
+    loader.style.transition =
+      "opacity 1200ms cubic-bezier(0.16,1,0.3,1)";
+
+    loader.style.opacity = "0";
+
+    document.body.classList.remove(
+      "is-loading"
+    );
+
+    setTimeout(
+      () => {
+        loader.remove();
+      },
+      1300
+    );
   }
 
-  /* ============================================================
-     5. RECOVERY CHAIN
-     If modules failed on first pass (because THREE wasn't ready),
-     reload them now — in dependency order — then boot.
-     ============================================================ */
-  S.threeReady
-    .then(function (THREE) {
+  /* =======================================================
+     NAVIGATION
+  ======================================================== */
 
-      // We only reload modules that failed. If index.html is later
-      // simplified (main.js loads everything), this becomes a no-op
-      // because everything is already present.
-      var chain = Promise.resolve();
-
-      if (!has('buildings')) {
-        chain = chain.then(function () { return loadScript('buildings.js'); });
-      }
-      if (!has('environment')) {
-        chain = chain.then(function () { return loadScript('environment.js'); });
-      }
-      if (!has('scrollexperience')) {
-        chain = chain.then(function () { return loadScript('scrollexperience.js'); });
-      }
-      if (!has('interface')) {
-        chain = chain.then(function () { return loadScript('interface.js'); });
-      }
-
-      return chain;
-    })
-    .then(function () {
-
-      // ---- VERIFY EVERYTHING IS PRESENT ----
-      var required = [
-        'performance',
-        'city',
-        'buildings',
-        'environment',
-        'scrollexperience',
-        'interface'
-      ];
-      var missing = [];
-      for (var i = 0; i < required.length; i++) {
-        if (!has(required[i])) missing.push(required[i] + '.js');
-      }
-
-      if (missing.length > 0) {
-        var msg = 'Boot sequence incomplete.<br>Missing or failed:<br>';
-        for (var j = 0; j < missing.length; j++) {
-          msg += '&nbsp;&nbsp;·&nbsp;&nbsp;' + missing[j] + '<br>';
-        }
-        msg += '<span style="opacity:.55;font-size:11px;display:block;margin-top:14px">';
-        msg += 'Check the boot log and confirm each file is present in the repo root.</span>';
-        if (typeof S.fatal === 'function') S.fatal(msg);
-        throw new Error('Missing modules: ' + missing.join(', '));
-      }
-
-      // ---- EVERYTHING PRESENT → BOOT ----
-      boot();
-    })
-    .catch(function (err) {
-      // The catch is a safety net. Most failure paths have already
-      // called S.fatal() above; we log for the console only.
-      console.error('[main] boot chain failed:', err);
-      if (!window.__SANTINOPOLE_STARTED && typeof S.fatal === 'function') {
-        // Only escalate if nothing has shown an error yet.
-        var loaderEl = document.getElementById('loader');
-        var errEl2 = document.getElementById('err');
-        if (loaderEl && errEl2 && !errEl2.classList.contains('is-visible')) {
-          S.fatal(
-            'Santinopole failed to boot.<br>' +
-            '<span style="opacity:.55;font-size:11px">' +
-            (err && err.message ? err.message : 'unknown error') +
-            '</span>'
-          );
-        }
-      }
-    });
-
-  /* ============================================================
-     6. TOP-LEVEL ERROR TRAP
-     Catch uncaught errors that would otherwise vanish silently.
-     ============================================================ */
-  window.addEventListener('error', function (e) {
-    // Do not raise the fatal screen for benign errors — only log.
-    // Fatal paths are already handled by the boot chain.
-    if (e && e.message) {
-      console.error('[global error]', e.message, e.filename, e.lineno);
+  handleNavigation(
+    destination
+  ) {
+    if (
+      !destination
+    ) {
+      return;
     }
-  });
 
-  window.addEventListener('unhandledrejection', function (e) {
-    if (e && e.reason) {
-      console.error('[unhandled rejection]', e.reason);
+    if (
+      typeof destination ===
+      "string"
+    ) {
+      this.scroll?.goTo?.(
+        destination
+      );
+
+      return;
     }
-  });
 
-  /* ============================================================
-     7. BOOT TIMEOUT GUARD
-     If after 25 seconds nothing has booted, show the error screen
-     with the boot log visible so the user knows which file stalled.
-     ============================================================ */
-  setTimeout(function () {
-    if (!window.__SANTINOPOLE_STARTED) {
-      var errEl = document.getElementById('err');
-      var errMsg = document.getElementById('errMsg');
-      var loaderEl = document.getElementById('loader');
+    if (
+      destination.section
+    ) {
+      this.scroll?.goTo?.(
+        destination.section
+      );
+    }
+  }
 
-      // Only show if the error screen isn't already visible.
-      if (errEl && !errEl.classList.contains('is-visible')) {
-        if (errMsg) {
-          errMsg.innerHTML =
-            'Santinopole did not finish booting within 25 seconds.<br>' +
-            'The boot log above shows which file stalled.';
-        }
-        errEl.classList.add('is-visible');
-        if (loaderEl) loaderEl.classList.add('done');
+  /* =======================================================
+     FALLBACK
+  ======================================================== */
+
+  showWebGLFallback() {
+    const fallback =
+      document.querySelector(
+        "#webgl-fallback"
+      );
+
+    const loader =
+      document.querySelector(
+        "#loader"
+      );
+
+    if (loader) {
+      loader.remove();
+    }
+
+    if (fallback) {
+      fallback.hidden = false;
+    }
+
+    document.body.classList.remove(
+      "is-loading"
+    );
+  }
+
+  showFallbackError(
+    error
+  ) {
+    console.error(
+      "[SANTINOPOLE] Fatal:",
+      error
+    );
+
+    const loader =
+      document.querySelector(
+        "#loader"
+      );
+
+    if (loader) {
+      loader.style.opacity =
+        "0";
+    }
+
+    document.body.classList.remove(
+      "is-loading"
+    );
+  }
+
+  /* =======================================================
+     DESTROY
+  ======================================================== */
+
+  destroy() {
+    if (
+      this.destroyed
+    ) {
+      return;
+    }
+
+    this.destroyed =
+      true;
+
+    this.systems.forEach(
+      (system) => {
+        system?.destroy?.();
       }
+    );
+
+    this.engine?.destroy?.();
+
+    performanceController.destroy();
+
+    this.engine = null;
+    this.city = null;
+    this.scroll = null;
+    this.interface = null;
+    this.systems.length = 0;
+  }
+}
+
+/* =========================================================
+   GLOBAL APP INSTANCE
+   ========================================================= */
+
+const app =
+  new SantinopoleApp();
+
+/*
+  Expose a controlled debug handle.
+
+  This is useful during development without
+  polluting the application architecture.
+*/
+
+window.SANTINOPOLE = {
+  app,
+  performance:
+    performanceController,
+};
+
+/* =========================================================
+   START
+   ========================================================= */
+
+document.body.classList.add(
+  "is-loading"
+);
+
+if (
+  document.readyState ===
+  "loading"
+) {
+  document.addEventListener(
+    "DOMContentLoaded",
+    () => app.boot(),
+    {
+      once: true,
     }
-  }, 25000);
+  );
+} else {
+  app.boot();
+}
 
-  /* ============================================================
-     8. PAGE LIFECYCLE
-     Pause the renderer when the tab is hidden. The scrollexperience
-     loop already checks document.hidden; this is a belt-and-braces
-     courtesy for slower devices.
-     ============================================================ */
-  document.addEventListener('visibilitychange', function () {
-    if (document.hidden) {
-      // scrollexperience handles this internally, but we nudge
-      // the renderer to skip its RAF work immediately.
-      if (S.scrollexperience) S.scrollexperience.state.paused = true;
-    } else {
-      if (S.scrollexperience) {
-        S.scrollexperience.state.paused = false;
-        S.scrollexperience.state._prevNow = 0;
-      }
-    }
-  });
+/* =========================================================
+   HOT-RELOAD / PAGE CLEANUP
+   ========================================================= */
 
-  /* ============================================================
-     9. DEBUG SURFACE
-     Call from browser console:
-       SANTINOPOLE.status()   → full boot report
-     ============================================================ */
-  S.status = function () {
-    var lines = [];
-    lines.push('SANTINOPOLE — status');
-    lines.push('  started:      ' + (window.__SANTINOPOLE_STARTED ? 'yes' : 'no'));
-    lines.push('  booted:       ' + (booted ? 'yes' : 'no'));
-    lines.push('  tier:         ' + (S.performance ? S.performance.Q.tierName : '—'));
-    lines.push('  act:          ' + (S.scrollexperience ?
-      S.scrollexperience.ACTS[S.scrollexperience.getActIndex()].name : '—'));
-    lines.push('  progress:     ' + (S.scrollexperience ?
-      (S.scrollexperience.getProgress() * 100).toFixed(1) + '%' : '—'));
-    lines.push('  districts:    ' + (S.city ? S.city.districts.length : 0));
-    lines.push('  lots:         ' + (S.city ? S.city.lots.length : 0));
-    lines.push('  buildings:    ' + (S.buildings ? S.buildings.count + ' meshes' : '—'));
-    lines.push('  modules:      ' + [
-      has('performance')    ? 'perf' : '—',
-      has('city')           ? 'city' : '—',
-      has('buildings')      ? 'bldg' : '—',
-      has('environment')    ? 'env'  : '—',
-      has('scrollexperience') ? 'scroll' : '—',
-      has('interface')      ? 'ui'   : '—'
-    ].join(' · '));
-    console.log('%c' + lines.join('\n'),
-      'color:#d4a24a;font-family:monospace;line-height:1.6');
-    return lines.join('\n');
-  };
+window.addEventListener(
+  "pagehide",
+  () => {
+    app.destroy();
+  },
+  {
+    once: true,
+  }
+);
 
-  /* ============================================================
-     10. WHEN main.js IS THE ONLY SCRIPT IN index.html
-     (future optimization — leave as designed for now)
-     ============================================================ */
-  // Not needed yet — index.html currently includes all 8 files.
-
-})();
+export default app;
