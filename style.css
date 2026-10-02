@@ -1,1 +1,571 @@
 
+/* ============================================================
+   SANTINOPOLE — style.css
+   The interface layer. Cinematic typography, HUD, wayfinding.
+   Nothing here touches the 3D scene.
+   ============================================================ */
+
+/* ---------- TOKENS ---------- */
+:root {
+  --ink:        #050708;
+  --cream:      #f6efe0;
+  --gold:       #d4a24a;
+  --gold-soft:  #f2d29a;
+  --dim:        rgba(246, 239, 224, 0.55);
+  --dimmer:     rgba(246, 239, 224, 0.32);
+  --line:       rgba(246, 239, 224, 0.14);
+
+  --serif:      Georgia, 'Times New Roman', Times, serif;
+  --sans:       -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+  --pad:        clamp(16px, 4vw, 44px);
+  --pad-top:    calc(var(--pad) + env(safe-area-inset-top, 0px));
+  --pad-bot:    calc(var(--pad) + env(safe-area-inset-bottom, 0px));
+
+  --ease:       cubic-bezier(0.22, 1, 0.36, 1);
+  --slow:       900ms;
+  --med:        500ms;
+  --fast:       260ms;
+}
+
+/* ---------- RESET ---------- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  background: var(--ink);
+  color: var(--cream);
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  position: relative;
+  min-height: 100vh;
+}
+
+a { color: inherit; text-decoration: none; }
+ul { list-style: none; }
+
+/* ---------- WEBGL CANVAS ---------- */
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 1;
+  touch-action: none;
+  background: var(--ink);
+  outline: none;
+}
+
+/* ---------- SCROLL TRACK ---------- */
+/* Height is set by JS (interface.js). Keeps DOM structure available
+   for the scroll driver in scrollexperience.js. */
+#spacer {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  height: 800vh; /* JS overrides this */
+  pointer-events: none;
+}
+
+/* ---------- CINEMATIC OVERLAY (vignette + grain) ---------- */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center,
+      rgba(0, 0, 0, 0) 40%,
+      rgba(0, 0, 0, 0.32) 78%,
+      rgba(0, 0, 0, 0.62) 100%);
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+}
+
+/* ============================================================
+   HUD
+   ============================================================ */
+#ui {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--pad-top) var(--pad) var(--pad-bot);
+}
+
+/* ---------- TOP BAR ---------- */
+.hud-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55em;
+  max-width: 60vw;
+}
+
+.brand-name {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(14px, 1.5vw, 20px);
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--cream);
+  text-shadow: 0 2px 22px rgba(0, 0, 0, 0.9);
+  opacity: 0.96;
+}
+
+.brand-sub {
+  font-family: var(--sans);
+  font-size: clamp(8px, 0.72vw, 10.5px);
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.9;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+  text-align: right;
+  font-family: var(--sans);
+  font-size: clamp(8.5px, 0.78vw, 11px);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--dim);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9);
+  line-height: 1.75;
+}
+
+.meta-row b {
+  color: var(--gold);
+  font-weight: 500;
+  letter-spacing: 0.28em;
+}
+
+#hudClock {
+  color: var(--cream);
+  opacity: 0.78;
+  letter-spacing: 0.42em;
+  margin-top: 0.35em;
+}
+
+/* ---------- CHAPTER BLOCK ---------- */
+.chapter {
+  align-self: flex-start;
+  max-width: min(620px, 92vw);
+  transition: opacity var(--med) var(--ease),
+              transform var(--med) var(--ease);
+  will-change: opacity, transform;
+}
+
+.chapter-num {
+  font-family: var(--sans);
+  font-size: clamp(8px, 0.72vw, 10px);
+  letter-spacing: 0.46em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.9;
+  margin-bottom: 1em;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9);
+}
+
+.chapter-title {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(24px, 4.4vw, 64px);
+  line-height: 1.04;
+  letter-spacing: -0.012em;
+  color: var(--cream);
+  text-shadow: 0 4px 44px rgba(0, 0, 0, 0.92);
+  max-width: 18ch;
+}
+
+.chapter-text {
+  margin-top: 1.1em;
+  font-family: var(--sans);
+  font-size: clamp(10.5px, 0.95vw, 13px);
+  line-height: 1.75;
+  letter-spacing: 0.05em;
+  color: var(--dim);
+  max-width: 46ch;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9);
+}
+
+/* ---------- BOTTOM BAR ---------- */
+.hud-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+}
+
+.progress {
+  flex: 1;
+  max-width: 420px;
+}
+
+.progress-track {
+  position: relative;
+  height: 1px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-soft));
+  box-shadow: 0 0 12px rgba(212, 162, 74, 0.8);
+  will-change: width;
+  transition: width 180ms linear;
+}
+
+.progress-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-family: var(--sans);
+  font-size: 8.5px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--dimmer);
+}
+
+.progress-labels span:first-child {
+  color: var(--dim);
+}
+
+/* ---------- SCROLL HINT ---------- */
+.hint {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  font-family: var(--sans);
+  font-size: 8.5px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--dim);
+  text-align: right;
+  transition: opacity 700ms var(--ease);
+}
+
+.hint-bar {
+  display: block;
+  width: 1px;
+  height: 26px;
+  background: linear-gradient(180deg, rgba(246, 239, 224, 0.6), transparent);
+  animation: hintPulse 2.4s ease-in-out infinite;
+}
+
+.hint-label {
+  display: block;
+  line-height: 2;
+}
+
+@keyframes hintPulse {
+  0%, 100% { opacity: 0.25; transform: scaleY(0.6); }
+  50%      { opacity: 1;    transform: scaleY(1);   }
+}
+
+/* ============================================================
+   WAYFINDING NAV
+   ============================================================ */
+.wayfinding {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--pad-bot) + 12px);
+  transform: translateX(-50%);
+  z-index: 6;
+  pointer-events: auto;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--slow) var(--ease),
+              transform var(--slow) var(--ease),
+              visibility var(--slow);
+}
+
+body.wayfinding-visible .wayfinding {
+  opacity: 1;
+  visibility: visible;
+}
+
+.wayfinding ul {
+  display: flex;
+  gap: clamp(14px, 2.4vw, 34px);
+  padding: 12px clamp(18px, 3vw, 30px);
+  background: rgba(5, 7, 8, 0.42);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(246, 239, 224, 0.09);
+  border-radius: 2px;
+}
+
+.wayfinding a {
+  position: relative;
+  display: inline-block;
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 4px 0;
+  transition: color var(--fast) var(--ease);
+}
+
+.wayfinding a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--gold);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform var(--med) var(--ease);
+}
+
+.wayfinding a:hover,
+.wayfinding a:focus-visible,
+.wayfinding a.is-active {
+  color: var(--gold-soft);
+  outline: none;
+}
+
+.wayfinding a:hover::after,
+.wayfinding a:focus-visible::after,
+.wayfinding a.is-active::after {
+  transform: scaleX(1);
+}
+
+/* ============================================================
+   BOOT LOADER
+   ============================================================ */
+#loader {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 24px;
+  transition: opacity 600ms var(--ease),
+              visibility 600ms var(--ease);
+}
+
+#loader.done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loader-brand {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(18px, 3vw, 36px);
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  padding-left: 0.5em;
+  color: var(--cream);
+}
+
+.loader-sub {
+  font-family: var(--sans);
+  font-size: 9px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.85;
+  margin-top: -8px;
+}
+
+.loader-bar {
+  position: relative;
+  width: min(260px, 62vw);
+  height: 1px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.loader-bar i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  background: var(--gold);
+  box-shadow: 0 0 14px var(--gold);
+  transition: width 220ms var(--ease);
+}
+
+.loader-log {
+  font-family: var(--sans);
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--dimmer);
+  text-align: center;
+  line-height: 1.9;
+  min-height: 1.9em;
+  max-width: 90vw;
+}
+
+.loader-log .ok  { color: var(--dim); }
+.loader-log .bad { color: #e0745a; letter-spacing: 0.3em; }
+
+/* ============================================================
+   ERROR FALLBACK
+   ============================================================ */
+#err {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink);
+  padding: 32px;
+  text-align: center;
+}
+
+#err.is-visible {
+  display: flex;
+}
+
+.err-inner {
+  max-width: 480px;
+}
+
+.err-title {
+  font-family: var(--serif);
+  font-size: 18px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--cream);
+  margin-bottom: 18px;
+}
+
+.err-msg {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.9;
+  color: #e8dcc0;
+  margin-bottom: 12px;
+}
+
+.err-hint {
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--dimmer);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+/* Mobile portrait */
+@media (max-width: 640px) {
+  .meta { display: none; }
+
+  .chapter-text {
+    font-size: 11px;
+    line-height: 1.7;
+    max-width: 40ch;
+  }
+
+  .hud-bottom {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .progress { max-width: none; }
+
+  .hint {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .hint-bar {
+    width: 18px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(246, 239, 224, 0.6), transparent);
+    animation: none;
+  }
+
+  .wayfinding ul {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 8px;
+    padding: 10px 16px;
+  }
+
+  .wayfinding a { font-size: 9px; letter-spacing: 0.28em; }
+}
+
+/* Small landscape phones */
+@media (max-height: 460px) and (orientation: landscape) {
+  .chapter { max-width: 56vw; }
+  .chapter-title { font-size: clamp(18px, 3.2vw, 26px); }
+  .chapter-text { display: none; }
+  .hud-top, .hud-bottom { gap: 12px; }
+  .wayfinding { bottom: calc(var(--pad-bot) + 4px); }
+}
+
+/* Reduced-motion users: kill pulses and long transitions */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 120ms !important;
+  }
+}
+
+/* Fallback when backdrop-filter is unsupported */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .wayfinding ul { background: rgba(5, 7, 8, 0.86); }
+}
+
+/* The body class is set by main.js once the world boots */
+body.is-ready #loader { pointer-events: none; }
