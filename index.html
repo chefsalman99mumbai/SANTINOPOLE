@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="SANTINOPOLE Digital — Web, SEO, Growth." />
-  <meta name="theme-color" content="#1c4a47" />
+  <meta name="theme-color" content="#2a5f5b" />
   <title>SANTINOPOLE — Digital.</title>
 
   <!-- =========================================================
@@ -40,7 +40,7 @@
       --bone: #f2eee6;
       --ink: #0b0d0d;
       --charcoal: #101313;
-      --acqua: #1c4a47;
+      --acqua: #2a5f5b;
       --gold: #b8964f;
       --sand: #d9d0c0;
       --line: rgba(10, 10, 10, 0.13);
@@ -378,7 +378,6 @@
       pointer-events: none;
     }
 
-
     /* =========================================================
        CINEMATIC JOURNEY TYPOGRAPHY
        The city remains the interface; typography appears as
@@ -700,7 +699,6 @@
       color: rgba(242,238,230,.64);
     }
 
-
     /* =========================================================
        PROCESS
     ========================================================== */
@@ -856,7 +854,6 @@
           #665b51 100%
         );
     }
-
 
     .work-card__art--four {
       background:
@@ -1078,7 +1075,7 @@
     }
 
     .footer__contact::before {
-      content: "SANTINOPOLE / 45°26' N 12°20' E";
+      content: "BUSINESS CENTERS / MUMBAI · GOA · JODHPUR";
       position: absolute;
       right: 18px;
       bottom: 14px;
@@ -1443,7 +1440,7 @@
 .territories-title{
   font:400 clamp(48px,7vw,112px)/.9 Georgia,serif; letter-spacing:-.045em;
 }
-.territories-title em{font-style:italic;color:#1c4a47}
+.territories-title em{font-style:italic;color:#2a5f5b}
 .territories-copy{
   max-width:500px; font:400 clamp(15px,1.3vw,20px)/1.5 Arial,sans-serif;
   letter-spacing:.01em;
@@ -1464,6 +1461,453 @@
   .territories-main{grid-template-columns:1fr;gap:8vh}
   .territories-section{min-height:70vh;padding:12vh 7vw}
   .footer-territories{flex-wrap:wrap;gap:10px}
+}
+</style>
+
+<style id="mobile-performance">
+/* SANTINOPOLE mobile performance + layout pass */
+@media (max-width: 700px){
+  html,body{overflow-x:hidden}
+  body{touch-action:pan-y}
+  canvas{display:block;width:100vw!important;height:100vh!important}
+  .territories-section{min-height:auto;padding:18vh 7vw 14vh}
+  .territories-main{grid-template-columns:1fr;gap:7vh}
+  .territories-title{font-size:clamp(48px,14vw,78px)}
+  .territories-copy{font-size:15px;max-width:92vw}
+  .footer-territories{padding:16px 7vw;font-size:9px;letter-spacing:.16em}
+}
+
+/* Keep overlays readable without covering the scene. */
+@media (max-width: 480px){
+  .chapter,.chapter-content,.hero-copy,.scroll-copy{max-width:88vw!important}
+  .chapter h1,.chapter-title{font-size:clamp(38px,12vw,62px)!important}
+}
+</style>
+
+
+<style id="safe-mobile-final">
+@media (max-width:700px){
+  html,body{width:100%;max-width:100%;overflow-x:hidden}
+  body{overscroll-behavior-x:none}
+  canvas{width:100vw!important;height:100dvh!important;display:block}
+  .territories-section{padding:11vh 7vw 12vh;min-height:auto}
+  .territories-main{grid-template-columns:1fr;gap:6vh}
+  .territories-title{font-size:clamp(42px,12vw,70px)}
+  .territories-copy{font-size:14px;line-height:1.5}
+  .footer-territories{padding:14px 7vw;flex-wrap:wrap;gap:9px;font-size:8px}
+}
+@media (max-width:480px){
+  .territories-section{padding-top:9vh}
+  .territories-copy span{font-size:9px}
+}
+</style>
+
+
+<style id="scroll-reveal-guard">
+.business-centers{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:16px 7vw;background:#171817;color:#f2eee6;
+  font:600 9px/1 Arial,sans-serif;letter-spacing:.2em;
+}
+.business-centers .bc-label{opacity:.4;margin-right:7px}
+.business-centers i{font-style:normal;opacity:.3}
+@media(max-width:700px){
+  .business-centers{padding:14px 7vw;font-size:8px;gap:8px}
+}
+</style>
+
+
+<style id="camera-versatility">
+/* versatile-camera-pass: camera movement remains scroll-owned, with wider lens variation */
+</style>
+
+
+<style id="santinopole-mobile-final">
+@media (max-width: 900px){
+  .hero{
+    min-height:100svh;
+    height:100svh;
+  }
+
+  .hero__canvas,
+  .hero__canvas canvas{
+    width:100%;
+    height:100%;
+  }
+
+  .journey-copy{
+    left:7vw!important;
+    right:7vw!important;
+    width:auto!important;
+    max-width:720px;
+  }
+
+  .journey-copy__title{
+    font-size:clamp(40px,8.5vw,82px)!important;
+    line-height:.92!important;
+  }
+
+  .journey-copy__body{
+    max-width:520px!important;
+    font-size:14px!important;
+    line-height:1.55!important;
+  }
+
+  .journey-progress{
+    left:7vw!important;
+    right:7vw!important;
+    width:auto!important;
+  }
+
+  .service{
+    min-height:82svh!important;
+  }
+
+  .service__wipe{
+    min-height:82svh!important;
+  }
+
+  .service__content{
+    align-self:center;
+  }
+
+  .service__title{
+    font-size:clamp(52px,13vw,110px)!important;
+  }
+
+  .process__inner,
+  .work__inner,
+  .footer__inner{
+    width:auto!important;
+    margin-left:7vw!important;
+    margin-right:7vw!important;
+  }
+
+  .territories-section{
+    min-height:auto!important;
+    padding:12vh 7vw!important;
+  }
+}
+
+@media (max-width: 600px){
+  html,body{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+  }
+
+  body{
+    touch-action:pan-y;
+    overscroll-behavior-x:none;
+  }
+
+  .nav{
+    padding:16px 6vw!important;
+  }
+
+  .nav__inner{
+    width:100%!important;
+  }
+
+  .nav__brand{
+    font-size:9px!important;
+    letter-spacing:.18em!important;
+  }
+
+  .hero__copy{
+    left:6vw!important;
+    right:6vw!important;
+    bottom:8vh!important;
+    width:auto!important;
+  }
+
+  .hero__title{
+    font-size:clamp(48px,15vw,92px)!important;
+    line-height:.84!important;
+    letter-spacing:-.045em!important;
+    max-width:100%!important;
+  }
+
+  .hero__eyebrow{
+    font-size:8px!important;
+    letter-spacing:.18em!important;
+  }
+
+  .hero__subline{
+    margin-top:14px!important;
+  }
+
+  .hero__digital{
+    font-size:30px!important;
+  }
+
+  .hero__services{
+    font-size:8px!important;
+    letter-spacing:.12em!important;
+    margin-top:10px!important;
+  }
+
+  .hero__chapter{
+    right:6vw!important;
+    top:16vh!important;
+    font-size:7px!important;
+    letter-spacing:.14em!important;
+  }
+
+  .hero__scroll{
+    bottom:24px!important;
+    font-size:8px!important;
+  }
+
+  .journey-copy{
+    left:6vw!important;
+    right:6vw!important;
+    bottom:15vh!important;
+    width:auto!important;
+  }
+
+  .journey-copy__index{
+    font-size:8px!important;
+  }
+
+  .journey-copy__kicker{
+    font-size:8px!important;
+    letter-spacing:.18em!important;
+  }
+
+  .journey-copy__title{
+    font-size:clamp(38px,12vw,66px)!important;
+  }
+
+  .journey-copy__body{
+    font-size:13px!important;
+    max-width:92vw!important;
+  }
+
+  .journey-copy__accent{
+    font-size:7px!important;
+  }
+
+  .journey-progress{
+    left:6vw!important;
+    right:6vw!important;
+    bottom:5vh!important;
+  }
+
+  .journey-progress__labels{
+    font-size:7px!important;
+  }
+
+  .service,
+  .service__wipe{
+    min-height:78svh!important;
+  }
+
+  .service__wipe{
+    padding:12vh 6vw!important;
+    display:block!important;
+  }
+
+  .service__number{
+    margin-bottom:18vh!important;
+    font-size:8px!important;
+  }
+
+  .service__content{
+    display:block!important;
+  }
+
+  .service__title{
+    font-size:clamp(56px,17vw,96px)!important;
+    line-height:.86!important;
+  }
+
+  .service__meta{
+    margin-top:7vh!important;
+    max-width:88vw!important;
+  }
+
+  .service__copy{
+    font-size:13px!important;
+    line-height:1.55!important;
+  }
+
+  .service__rule{
+    width:100%!important;
+  }
+
+  .territories-main{
+    grid-template-columns:1fr!important;
+    gap:6vh!important;
+  }
+
+  .territories-title{
+    font-size:clamp(44px,13vw,74px)!important;
+  }
+
+  .territories-copy{
+    font-size:14px!important;
+  }
+
+  .business-centers{
+    padding:14px 6vw!important;
+    gap:8px!important;
+    font-size:7px!important;
+    line-height:1.4!important;
+  }
+
+  .footer{
+    padding-bottom:env(safe-area-inset-bottom)!important;
+  }
+
+  .footer__bottom{
+    padding-bottom:24px!important;
+  }
+
+  /* Avoid accidental tap/scroll interaction with the WebGL layer. */
+  .hero__canvas,
+  .hero__canvas canvas{
+    touch-action:none;
+  }
+}
+
+@media (max-width:380px){
+  .hero__title{
+    font-size:clamp(42px,14vw,68px)!important;
+  }
+
+  .journey-copy__title{
+    font-size:clamp(34px,11vw,54px)!important;
+  }
+
+  .service__title{
+    font-size:clamp(50px,16vw,78px)!important;
+  }
+}
+</style>
+
+
+<style id="projects-footer-refinement">
+.work__grid--clients{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1px;
+  background:rgba(10,10,10,.18);
+  border:1px solid rgba(10,10,10,.18);
+}
+.work__grid--clients .work-card{
+  min-height:clamp(520px,54vw,760px);
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  align-items:flex-end;
+  padding:clamp(28px,4vw,62px);
+  color:#f2eee6;
+  isolation:isolate;
+}
+.work-card--karim{background:linear-gradient(145deg,#a98655 0%,#76563c 48%,#294e4a 100%)}
+.work-card--fizza{background:linear-gradient(145deg,#d3c1a4 0%,#94785c 42%,#244b48 100%)}
+.work-card--f1{background:linear-gradient(145deg,#1a2929 0%,#122f30 48%,#705b46 100%)}
+.work__grid--clients .work-card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 75% 20%,rgba(255,255,255,.14),transparent 30%),
+    linear-gradient(120deg,transparent 35%,rgba(255,255,255,.045) 50%,transparent 65%);
+  opacity:.8;
+  z-index:-1;
+}
+.work__grid--clients .work-card__info{width:100%;position:relative;z-index:2}
+.work__grid--clients .work-card__eyebrow{
+  display:block;
+  font:600 9px/1.2 var(--mono);
+  letter-spacing:.22em;
+  opacity:.72;
+  margin-bottom:13px;
+}
+.work__grid--clients .work-card__project{
+  display:block;
+  font:500 8px/1.3 var(--mono);
+  letter-spacing:.16em;
+  opacity:.58;
+  margin-bottom:24px;
+}
+.work__grid--clients .work-card__title{
+  margin:0;
+  font-family:var(--serif);
+  font-size:clamp(48px,5.2vw,92px);
+  line-height:.82;
+  letter-spacing:-.045em;
+  font-weight:500;
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+.work__grid--clients .work-card__honour{
+  max-width:430px;
+  margin:28px 0 0;
+  font:400 12px/1.55 var(--sans);
+  opacity:.76;
+}
+.footer--water{
+  background:var(--acqua);
+  color:var(--bone);
+  position:relative;
+  overflow:hidden;
+  border-top:0;
+}
+.footer--water::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  opacity:.28;
+  background:
+    radial-gradient(circle at 18% 20%,rgba(255,255,255,.12),transparent 28%),
+    radial-gradient(circle at 82% 65%,rgba(0,0,0,.12),transparent 32%);
+}
+.footer__logo-stage{
+  min-height:clamp(260px,34vw,500px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:7vw;
+  position:relative;
+  z-index:1;
+  border-bottom:1px solid rgba(242,238,230,.18);
+}
+.footer__logo-image{
+  display:block;
+  width:min(72vw,760px);
+  max-height:32vh;
+  object-fit:contain;
+  object-position:center;
+  filter:brightness(0) invert(1);
+}
+.footer--water .footer__inner{position:relative;z-index:1}
+.footer--water .footer__wordmark,
+.footer--water .footer__nav a,
+.footer--water .footer__social a,
+.footer--water .footer__contact,
+.footer--water .footer__bottom{color:var(--bone)}
+.footer--water .footer__contact-label{color:rgba(242,238,230,.52)}
+.footer--water .footer__bottom{border-top-color:rgba(242,238,230,.18)}
+@media(max-width:900px){
+  .work__grid--clients{grid-template-columns:1fr}
+  .work__grid--clients .work-card{min-height:62svh}
+  .work__grid--clients .work-card__title{font-size:clamp(50px,13vw,100px)}
+  .footer__logo-stage{min-height:300px}
+}
+@media(max-width:600px){
+  .work__head{margin-bottom:10vh}
+  .work__grid--clients{gap:0}
+  .work__grid--clients .work-card{min-height:72svh;padding:28px 6vw}
+  .work__grid--clients .work-card__eyebrow{font-size:8px}
+  .work__grid--clients .work-card__project{font-size:7px;margin-bottom:20px}
+  .work__grid--clients .work-card__title{font-size:clamp(48px,15vw,78px)}
+  .work__grid--clients .work-card__honour{font-size:12px;max-width:92%}
+  .footer__logo-stage{min-height:250px;padding:12vw 6vw}
+  .footer__logo-image{width:86vw;max-height:24vh}
 }
 </style>
 
@@ -1594,40 +2038,7 @@
       </div>
 
     </section>
-
-    <!-- =======================================================
-         INTRO
-    ======================================================== -->
-
-    <section class="section intro">
-
-      <div class="section__inner">
-
-        <div class="intro__grid">
-
-          <div
-            class="intro__statement display"
-            data-reveal
-          >
-            We build brands that move like water —
-            <span>quietly, precisely, everywhere.</span>
-          </div>
-
-          <p
-            class="intro__aside"
-            data-reveal
-          >
-            Digital experiences engineered with the restraint
-            of Italian design and the velocity of modern business.
-          </p>
-
-        </div>
-
-      </div>
-
-    </section>
-
-    <!-- =======================================================
+<!-- =======================================================
          SERVICES
     ======================================================== -->
 
@@ -1849,160 +2260,57 @@
       <div class="section__inner">
 
         <div class="work__head">
-
-          <h2
-            class="display"
-            data-reveal
-          >
+          <h2 class="display" data-reveal>
             Selected work.
           </h2>
-
           <p>
-            A small selection of identities,
-            platforms and growth systems.
+            Three businesses. Three digital worlds.
+            Built with pride, precision and respect.
           </p>
-
         </div>
 
-        <div class="work__grid">
+        <div class="work__grid work__grid--clients">
 
-          <article class="work-card" data-work>
-            <div class="work-card__media">
-              <div class="work-card__art work-card__art--one"></div>
-            </div>
+          <article class="work-card work-card--karim" data-work>
             <div class="work-card__info">
-              <div>
-                <span class="work-card__eyebrow">01 / Ponda · Goa</span>
-                <h3 class="work-card__title">M.A KARIM &amp; SONS</h3>
-                <span class="work-card__type">Website · SEO · Business growth</span>
-              </div>
-              <span class="work-card__metric">Paint dealer</span>
+              <span class="work-card__eyebrow">01 / PONDA · GOA</span>
+              <span class="work-card__project">DIGITAL PRESENCE / SEARCH / GROWTH</span>
+              <h3 class="work-card__title">M.A KARIM<br>&amp; SONS</h3>
+              <p class="work-card__honour">
+                Website, SEO and digital growth for a respected paint dealer in Ponda.
+              </p>
             </div>
-            <p class="work-card__honour">A proud digital partnership for a Ponda-based paint dealer — shaping its web presence, search visibility and digital foundation for continued growth.</p>
           </article>
 
-          <article class="work-card" data-work>
-            <div class="work-card__media">
-              <div class="work-card__art work-card__art--two"></div>
-            </div>
+          <article class="work-card work-card--fizza" data-work>
             <div class="work-card__info">
-              <div>
-                <span class="work-card__eyebrow">02 / Mumbai</span>
-                <h3 class="work-card__title">FIZZA INTERIOR</h3>
-                <span class="work-card__type">Website · SEO · Digital growth</span>
-              </div>
-              <span class="work-card__metric">Real estate</span>
+              <span class="work-card__eyebrow">02 / MUMBAI</span>
+              <span class="work-card__project">REAL ESTATE / DIGITAL / GROWTH</span>
+              <h3 class="work-card__title">FIZZA<br>INTERIOR</h3>
+              <p class="work-card__honour">
+                A refined digital presence for a Mumbai real-estate firm working with major names in Bombay's property landscape.
+              </p>
             </div>
-            <p class="work-card__honour">A digital presence built for a Mumbai real-estate firm working alongside major names in Bombay’s property landscape — presented with the stature its work deserves.</p>
           </article>
 
-          <article class="work-card" data-work>
-            <div class="work-card__media">
-              <div class="work-card__art work-card__art--three"></div>
-            </div>
+          <article class="work-card work-card--f1" data-work>
             <div class="work-card__info">
-              <div>
-                <span class="work-card__eyebrow">03 / Mumbai</span>
-                <h3 class="work-card__title">F1 Acoustic</h3>
-                <span class="work-card__type">Website · SEO · Growth</span>
-              </div>
-              <span class="work-card__metric">Luxury acoustics</span>
+              <span class="work-card__eyebrow">03 / MUMBAI</span>
+              <span class="work-card__project">LUXURY ACOUSTICS / DIGITAL / GROWTH</span>
+              <h3 class="work-card__title">F1<br>ACOUSTIC</h3>
+              <p class="work-card__honour">
+                Website, SEO and growth for a luxury sound-proofing company built around precision and premium craft.
+              </p>
             </div>
-            <p class="work-card__honour">A luxury sound-proofing company in Mumbai, translated into a refined digital experience designed to communicate precision, craft and premium positioning.</p>
-          </article>
-
-          <article class="work-card" data-work>
-            <div class="work-card__media">
-              <div class="work-card__art work-card__art--four"></div>
-            </div>
-            <div class="work-card__info">
-              <div>
-                <span class="work-card__eyebrow">04 / Santinopole</span>
-                <h3 class="work-card__title">SANTINOPOLE DIGITAL</h3>
-                <span class="work-card__type">Selected client work · WEB · SEO · GROWTH</span>
-              </div>
-              <span class="work-card__metric">Our craft</span>
-            </div>
-            <p class="work-card__honour">Four projects, one standard: thoughtful digital work built with pride, care and respect for the businesses trusting us with their next chapter.</p>
           </article>
 
         </div>
-
       </div>
-
     </section>
 
     <!-- =======================================================
          NUMBERS
     ======================================================== -->
-
-    <section class="section numbers">
-
-      <div class="section__inner">
-
-        <div class="eyebrow">
-          The numbers
-        </div>
-
-        <div class="numbers__grid">
-
-          <div
-            class="number"
-            data-counter="42"
-          >
-            <div class="number__value">
-              <span class="counter">0</span>
-            </div>
-
-            <div class="number__label">
-              Digital launches
-            </div>
-          </div>
-
-          <div
-            class="number"
-            data-counter="17"
-          >
-            <div class="number__value">
-              <span class="counter">0</span>
-            </div>
-
-            <div class="number__label">
-              Markets reached
-            </div>
-          </div>
-
-          <div
-            class="number"
-            data-counter="8"
-          >
-            <div class="number__value">
-              <span class="counter">0</span>
-            </div>
-
-            <div class="number__label">
-              Years of craft
-            </div>
-          </div>
-
-          <div
-            class="number"
-            data-counter="94"
-          >
-            <div class="number__value">
-              <span class="counter">0</span>%
-            </div>
-
-            <div class="number__label">
-              Client retention
-            </div>
-          </div>
-
-        </div>
-
-      </div>
-
-    </section>
 
     <!-- =======================================================
          CTA
@@ -2054,13 +2362,14 @@
        FOOTER
   ========================================================== -->
 
-  
-<div class="footer-territories" aria-label="Primary project cities">
-  <span class="footer-territories-label">PROJECTS /</span>
-  <span>MUMBAI</span><i>·</i><span>GOA</span><i>·</i><span>JODHPUR</span>
-</div>
-
-<footer class="footer">
+<footer class="footer footer--water">
+    <div class="footer__logo-stage">
+      <img
+        class="footer__logo-image"
+        src="santinopole-logo.png"
+        alt="SANTINOPOLE Digital"
+      />
+    </div>
 
     <div class="footer__inner">
 
@@ -2068,15 +2377,10 @@
 
         <div class="footer__wordmark">
           SANTINOPOLE<br />
-          <span style="font-style: italic;">
-            Digital.
-          </span>
+          <span style="font-style: italic;">Digital.</span>
         </div>
 
-        <nav
-          class="footer__nav"
-          aria-label="Footer navigation"
-        >
+        <nav class="footer__nav" aria-label="Footer navigation">
           <a href="#services">Services</a>
           <a href="#process">Process</a>
           <a href="#work">Work</a>
@@ -2090,36 +2394,24 @@
         </div>
 
         <div class="footer__contact">
-          <span class="footer__contact-label">Visit / Contact</span>
-          <address>
-            18 Fondamenta<br />
-            Santino, Venezia 30124<br />
-            Italy
-          </address>
-          <div class="contact-kicker">Fictional studio address — replace with yours</div>
+          <span class="footer__contact-label">Business centers</span>
+          <span>MUMBAI · GOA · JODHPUR</span>
         </div>
 
         <div class="footer__contact">
           <span class="footer__contact-label">Direct line</span>
           <a href="tel:+390415550184">+39 041 555 0184</a>
           <a href="mailto:hello@santinopoledigital.com" style="margin-top:12px;">hello@santinopoledigital.com</a>
-          <div class="contact-kicker">Phone / Email — placeholder details</div>
         </div>
 
       </div>
 
       <div class="footer__bottom">
-        <span>
-          © SANTINOPOLE Digital.
-        </span>
-
-        <span>
-          Built with precision / Venezia
-        </span>
+        <span>© SANTINOPOLE Digital.</span>
+        <span>WEB · SEO · GROWTH</span>
       </div>
 
     </div>
-
   </footer>
 
   <!-- =========================================================
@@ -2171,6 +2463,12 @@
       window.matchMedia(
         "(max-width: 600px)"
       ).matches;
+const MOBILE_SCENE_BUDGET = {
+  buildings: mobile ? 78 : 160,
+  paline: mobile ? 110 : 240,
+  docks: mobile ? 4 : 8,
+  cameraShots: mobile ? 54 : 96
+};
 
     if (!gsap || !ScrollTrigger) {
       console.error(
@@ -2208,11 +2506,12 @@
     if (LenisClass) {
       try {
         lenis = new LenisClass({
-          duration: 1.1,
+          duration: mobile ? 0.72 : 0.95,
           smoothWheel: true,
           syncTouch: false,
-          wheelMultiplier: 0.9,
-          touchMultiplier: 1
+          wheelMultiplier: mobile ? 0.82 : 0.9,
+          touchMultiplier: 1,
+          gestureOrientation: "vertical"
         });
 
         lenis.on(
@@ -2311,12 +2610,7 @@
             "high-performance"
         });
 
-      renderer.setPixelRatio(
-        Math.min(
-          window.devicePixelRatio || 1,
-          mobile ? 1.35 : 1.6
-        )
-      );
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.0 : 1.5));
 
       renderer.setSize(
         window.innerWidth,
@@ -2596,7 +2890,7 @@
         acqua: {
           value:
             new THREE.Color(
-              "#1c4a47"
+              "#2a5f5b"
             )
         },
 
@@ -2622,106 +2916,103 @@
 
             varying float vWave;
             varying vec2 vUv;
+            varying vec3 vWorld;
 
             void main() {
-
               vUv = uv;
+              vec3 p = position;
 
-              vec3 p =
-                position;
+              float w1 = sin(p.x * 0.18 + time * 0.95);
+              float w2 = sin(p.y * 0.31 - time * 0.72);
+              float w3 = sin((p.x - p.y) * 0.11 + time * 0.52);
+              float w4 = sin((p.x + p.y) * 0.44 - time * 1.15);
 
-              float waveA =
-                sin(
-                  p.x * 0.22 +
-                  time * 0.42
-                ) * 0.075;
+              float wave =
+                w1 * 0.055 +
+                w2 * 0.038 +
+                w3 * 0.045 +
+                w4 * 0.014;
 
-              float waveB =
-                sin(
-                  p.y * 0.38 -
-                  time * 0.31
-                ) * 0.045;
+              p.z += wave;
+              vWave = wave;
 
-              float waveC =
-                sin(
-                  (p.x + p.y) * 0.13 +
-                  time * 0.20
-                ) * 0.04;
+              vec4 worldPosition =
+                modelMatrix * vec4(p, 1.0);
 
-              p.z +=
-                waveA +
-                waveB +
-                waveC;
-
-              vWave =
-                waveA +
-                waveB +
-                waveC;
+              vWorld = worldPosition.xyz;
 
               gl_Position =
                 projectionMatrix *
-                modelViewMatrix *
-                vec4(
-                  p,
-                  1.0
-                );
+                viewMatrix *
+                worldPosition;
             }
           `,
 
           fragmentShader: `
+            uniform float time;
             uniform vec3 acqua;
             uniform vec3 gold;
 
             varying float vWave;
             varying vec2 vUv;
+            varying vec3 vWorld;
+
+            float ribbon(vec2 p, float angle, float speed, float scale) {
+              float c = cos(angle);
+              float s = sin(angle);
+              vec2 q = vec2(
+                p.x * c - p.y * s,
+                p.x * s + p.y * c
+              );
+              float line = sin(q.y * scale + time * speed);
+              return smoothstep(0.70, 0.97, line);
+            }
 
             void main() {
+              vec2 uv = vUv * 95.0;
 
-              float horizon =
-                smoothstep(
-                  0.0,
-                  1.0,
-                  vUv.y
-                );
+              float large =
+                sin(uv.x * 0.075 + time * 0.34) *
+                sin(uv.y * 0.11 - time * 0.27);
 
-              float highlight =
+              float fine =
+                sin(uv.x * 0.73 + uv.y * 0.21 + time * 0.9) *
+                sin(uv.y * 0.61 - uv.x * 0.17 - time * 0.7);
+
+              float streaks =
+                ribbon(uv, 0.10, 0.48, 2.8) * 0.35 +
+                ribbon(uv, -0.42, 0.31, 3.7) * 0.25;
+
+              float sparkle =
                 smoothstep(
-                  0.02,
-                  0.12,
-                  abs(vWave)
+                  0.45,
+                  0.88,
+                  abs(fine) * 0.72 + abs(streaks)
                 );
 
               vec3 color =
-                mix(
-                  acqua,
-                  gold,
-                  horizon * 0.16
-                );
+                acqua +
+                vec3(0.018, 0.045, 0.055) * large +
+                vec3(0.025, 0.070, 0.080) * fine;
 
               color +=
-                vec3(
-                  0.08,
-                  0.1,
-                  0.075
-                ) *
-                highlight;
+                vec3(0.25, 0.62, 0.68) *
+                sparkle *
+                0.30;
+
+              color +=
+                vec3(0.86, 0.93, 0.88) *
+                sparkle *
+                0.10;
 
               gl_FragColor =
-                vec4(
-                  color,
-                  0.96
-                );
+                vec4(color, 0.98);
             }
           `
         });
 
       const waterGeometry =
-        new THREE.PlaneGeometry(
-          27,
-          1650,
-          mobile ? 24 : 48,
-          mobile ? 90 : 180
-        );
+        new THREE.PlaneGeometry(1800, 1800, mobile ? 24 : 48, mobile ? 90 : 180);
 
       water =
         new THREE.Mesh(
@@ -2739,6 +3030,382 @@
       );
 
       scene.add(water);
+
+      /* =======================================================
+         OPENING SPEEDBOAT / WAKE
+         ======================================================= */
+
+      const openingBoat =
+        new THREE.Group();
+
+      const hullShape =
+        new THREE.Shape();
+
+      hullShape.moveTo(0, -1.65);
+      hullShape.quadraticCurveTo(
+        -0.46, -1.12,
+        -0.58, -0.28
+      );
+      hullShape.quadraticCurveTo(
+        -0.62, 0.72,
+        -0.34, 1.34
+      );
+      hullShape.quadraticCurveTo(
+        -0.16, 1.62,
+        0, 1.72
+      );
+      hullShape.quadraticCurveTo(
+        0.16, 1.62,
+        0.34, 1.34
+      );
+      hullShape.quadraticCurveTo(
+        0.62, 0.72,
+        0.58, -0.28
+      );
+      hullShape.quadraticCurveTo(
+        0.46, -1.12,
+        0, -1.65
+      );
+
+      const hullGeometry =
+        new THREE.ExtrudeGeometry(
+          hullShape,
+          {
+            depth: 0.34,
+            bevelEnabled: true,
+            bevelSegments: 2,
+            bevelSize: 0.055,
+            bevelThickness: 0.045,
+            curveSegments: 6
+          }
+        );
+
+      hullGeometry.center();
+
+      const openingHull =
+        new THREE.Mesh(
+          hullGeometry,
+          new THREE.MeshStandardMaterial({
+            color: 0xf0b51a,
+            roughness: 0.28,
+            metalness: 0.05
+          })
+        );
+
+      openingHull.rotation.x =
+        Math.PI / 2;
+
+      openingHull.scale.set(
+        0.72,
+        0.72,
+        0.72
+      );
+
+      openingHull.position.y =
+        0.02;
+
+      openingBoat.add(openingHull);
+
+      const openingBow =
+        new THREE.Mesh(
+          new THREE.ConeGeometry(
+            0.36,
+            0.62,
+            12
+          ),
+          new THREE.MeshStandardMaterial({
+            color: 0xffcf3f,
+            roughness: 0.28,
+            metalness: 0.03
+          })
+        );
+
+      openingBow.rotation.x =
+        Math.PI / 2;
+
+      openingBow.position.z =
+        -1.22;
+
+      openingBoat.add(openingBow);
+
+      const openingDeck =
+        new THREE.Mesh(
+          new THREE.BoxGeometry(
+            0.72,
+            0.08,
+            0.78
+          ),
+          new THREE.MeshStandardMaterial({
+            color: 0xf4eee2,
+            roughness: 0.30
+          })
+        );
+
+      openingDeck.position.set(
+        0,
+        0.22,
+        0.12
+      );
+
+      openingBoat.add(openingDeck);
+
+      const openingWindshield =
+        new THREE.Mesh(
+          new THREE.BoxGeometry(
+            0.54,
+            0.19,
+            0.46
+          ),
+          new THREE.MeshStandardMaterial({
+            color: 0x214a4a,
+            roughness: 0.15,
+            metalness: 0.20,
+            transparent: true,
+            opacity: 0.94
+          })
+        );
+
+      openingWindshield.position.set(
+        0,
+        0.37,
+        0.02
+      );
+
+      openingWindshield.rotation.x =
+        -0.12;
+
+      openingBoat.add(
+        openingWindshield
+      );
+
+      const openingConsole =
+        new THREE.Mesh(
+          new THREE.BoxGeometry(
+            0.16,
+            0.13,
+            0.25
+          ),
+          new THREE.MeshStandardMaterial({
+            color: 0xeee6d8,
+            roughness: 0.42
+          })
+        );
+
+      openingConsole.position.set(
+        0,
+        0.35,
+        -0.30
+      );
+
+      openingBoat.add(
+        openingConsole
+      );
+
+      const openingRail =
+        new THREE.Mesh(
+          new THREE.TorusGeometry(
+            0.29,
+            0.018,
+            5,
+            18,
+            Math.PI
+          ),
+          new THREE.MeshStandardMaterial({
+            color: 0xf4eee6,
+            roughness: 0.30,
+            metalness: 0.22
+          })
+        );
+
+      openingRail.rotation.x =
+        Math.PI / 2;
+
+      openingRail.rotation.z =
+        Math.PI;
+
+      openingRail.position.set(
+        0,
+        0.28,
+        -0.18
+      );
+
+      openingBoat.add(
+        openingRail
+      );
+
+      /* Bright wake made from layered tapered ribbon strips. */
+      const wakeGroup =
+        new THREE.Group();
+
+      const wakeMaterial =
+        new THREE.MeshBasicMaterial({
+          color: 0xf7f4ea,
+          transparent: true,
+          opacity: 0.88,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        });
+
+      const wakeSoftMaterial =
+        new THREE.MeshBasicMaterial({
+          color: 0xdceff0,
+          transparent: true,
+          opacity: 0.34,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        });
+
+      function makeWakeStrip(width, length, material, offsetX) {
+        const geometry =
+          new THREE.PlaneGeometry(
+            width,
+            length,
+            mobile ? 8 : 16,
+            mobile ? 18 : 30
+          );
+
+        const pos =
+          geometry.attributes.position;
+
+        for (let i = 0; i < pos.count; i++) {
+          const y = pos.getY(i);
+          const t = (y + length / 2) / length;
+          const taper = 0.12 + 0.88 * (1.0 - t);
+          const x = pos.getX(i) * taper;
+          pos.setX(i, x);
+        }
+
+        geometry.computeVertexNormals();
+
+        const mesh =
+          new THREE.Mesh(
+            geometry,
+            material
+          );
+
+        mesh.rotation.x =
+          Math.PI / 2;
+
+        mesh.position.x =
+          offsetX;
+
+        mesh.position.y =
+          -0.05;
+
+        mesh.position.z =
+          2.55;
+
+        return mesh;
+      }
+
+      wakeGroup.add(
+        makeWakeStrip(
+          0.48,
+          10.5,
+          wakeSoftMaterial,
+          0
+        )
+      );
+
+      wakeGroup.add(
+        makeWakeStrip(
+          0.22,
+          8.2,
+          wakeMaterial,
+          -0.10
+        )
+      );
+
+      wakeGroup.add(
+        makeWakeStrip(
+          0.18,
+          7.4,
+          wakeMaterial,
+          0.12
+        )
+      );
+
+      openingBoat.add(wakeGroup);
+
+      openingBoat.position.set(
+        0,
+        0.03,
+        21.5
+      );
+
+      openingBoat.rotation.y =
+        Math.PI;
+
+      scene.add(openingBoat);
+
+      /*
+       * Small wake particles create irregular foam around the
+       * central ribbon, preventing it from looking like a flat decal.
+       */
+      const foamCount =
+        mobile ? 42 : 150;
+
+      const foamPositions =
+        new Float32Array(foamCount * 3);
+
+      const foamSizes =
+        new Float32Array(foamCount);
+
+      for (let i = 0; i < foamCount; i++) {
+        const t = Math.random();
+        const spread =
+          (0.12 + t * 0.95) *
+          (Math.random() > 0.5 ? 1 : -1);
+
+        foamPositions[i * 3] =
+          spread * (0.22 + Math.random() * 0.45);
+
+        foamPositions[i * 3 + 1] =
+          -0.04 + Math.random() * 0.025;
+
+        foamPositions[i * 3 + 2] =
+          1.0 + t * 8.2;
+
+        foamSizes[i] =
+          0.025 + Math.random() * 0.055;
+      }
+
+      const foamGeometry =
+        new THREE.BufferGeometry();
+
+      foamGeometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(
+          foamPositions,
+          3
+        )
+      );
+
+      foamGeometry.setAttribute(
+        "size",
+        new THREE.BufferAttribute(
+          foamSizes,
+          1
+        )
+      );
+
+      const foamMaterial =
+        new THREE.PointsMaterial({
+          color: 0xf6f4ec,
+          size: mobile ? 0.055 : 0.07,
+          transparent: true,
+          opacity: 0.76,
+          depthWrite: false,
+          sizeAttenuation: true
+        });
+
+      const openingFoam =
+        new THREE.Points(
+          foamGeometry,
+          foamMaterial
+        );
+
+      openingBoat.add(openingFoam);
 
       /* =======================================================
          PALAZZO HELPERS
@@ -3895,27 +4562,41 @@
       });
 
       function setWaterFirstVisibility(progress) {
-        const reveal = THREE.MathUtils.clamp(
-          (progress - 0.13) / 0.07,
-          0,
-          1
+        const openingEnd = 0.18;
+
+        const reveal =
+          THREE.MathUtils.clamp(
+            (progress - openingEnd) /
+              0.10,
+            0,
+            1
+          );
+
+        cityRoots.forEach(
+          (root) => {
+            root.visible =
+              reveal > 0.01;
+          }
         );
 
-        const cityVisible = reveal > 0.01;
-        cityRoots.forEach((root) => {
-          root.visible = cityVisible;
-        });
+        const boatReveal =
+          THREE.MathUtils.clamp(
+            (reveal - 0.28) /
+              0.72,
+            0,
+            1
+          );
 
-        const boatReveal = THREE.MathUtils.clamp(
-          (reveal - 0.28) / 0.72,
-          0,
-          1
+        gondolas.forEach(
+          (boat) => {
+            boat.visible =
+              boatReveal > 0.01;
+          }
         );
-        gondolas.forEach((boat) => {
-          boat.visible = boatReveal > 0.01;
-        });
+
+        openingBoat.visible =
+          progress < openingEnd;
       }
-
 
       /* =======================================================
          JOURNEY TYPOGRAPHY
@@ -3938,7 +4619,7 @@
           at: 0.00,
           index: "01 / 08",
           kicker: "THE WATER",
-          title: "Begin with the current.",
+          title: "Follow the current.",
           body: "Before the façades, before the streets, there is water — moving quietly through the city and carrying the journey forward.",
           accent: "LAGUNA / CANAL / CURRENT"
         },
@@ -4283,37 +4964,95 @@
       }
 
       function sampleShots(progress) {
-        const p =
+        const openingEnd = 0.16;
+
+        if (progress <= openingEnd) {
+          const e =
+            smoothStep(
+              THREE.MathUtils.clamp(
+                progress / openingEnd,
+                0,
+                1
+              )
+            );
+
+          /*
+           * Reference composition:
+           * camera begins almost vertically above the boat,
+           * then gradually lowers/tilts into the normal route.
+           */
+          cameraPositionTarget.set(
+            THREE.MathUtils.lerp(0, 0.2, e),
+            THREE.MathUtils.lerp(54, 8.8, e),
+            THREE.MathUtils.lerp(7, 31, e)
+          );
+
+          cameraLookTarget.set(
+            0,
+            THREE.MathUtils.lerp(0, 0.35, e),
+            THREE.MathUtils.lerp(8, -20, e)
+          );
+
+          cameraFovTarget =
+            THREE.MathUtils.lerp(
+              44,
+              shotFovs[0],
+              e
+            );
+
+          return;
+        }
+
+        const routeProgress =
           THREE.MathUtils.clamp(
-            progress,
+            (progress - openingEnd) /
+              (1 - openingEnd),
             0,
             1
-          ) * (shotCount - 1);
+          );
+
+        const p =
+          routeProgress *
+          (shotCount - 1);
 
         const index =
           Math.floor(p);
 
         const local =
-          smoothStep(p - index);
+          smoothStep(
+            p - index
+          );
 
         const a =
           shotPositions[
-            Math.min(index, shotCount - 1)
+            Math.min(
+              index,
+              shotCount - 1
+            )
           ];
 
         const b =
           shotPositions[
-            Math.min(index + 1, shotCount - 1)
+            Math.min(
+              index + 1,
+              shotCount - 1
+            )
           ];
 
         const la =
           shotLooks[
-            Math.min(index, shotCount - 1)
+            Math.min(
+              index,
+              shotCount - 1
+            )
           ];
 
         const lb =
           shotLooks[
-            Math.min(index + 1, shotCount - 1)
+            Math.min(
+              index + 1,
+              shotCount - 1
+            )
           ];
 
         cameraPositionTarget.lerpVectors(
@@ -4331,16 +5070,68 @@
         cameraFovTarget =
           THREE.MathUtils.lerp(
             shotFovs[
-              Math.min(index, shotCount - 1)
+              Math.min(
+                index,
+                shotCount - 1
+              )
             ],
             shotFovs[
-              Math.min(index + 1, shotCount - 1)
+              Math.min(
+                index + 1,
+                shotCount - 1
+              )
             ],
             local
           );
       }
 
+      function updateOpeningBoat(progress) {
+        const openingEnd = 0.16;
+
+        if (progress <= openingEnd) {
+          const e =
+            THREE.MathUtils.clamp(
+              progress / openingEnd,
+              0,
+              1
+            );
+
+          // Boat travels bottom -> top while remaining the visual focal point.
+          openingBoat.position.z =
+            THREE.MathUtils.lerp(
+              21.5,
+              -7.5,
+              e
+            );
+
+          openingBoat.position.x =
+            Math.sin(
+              e * Math.PI * 2.2
+            ) * 0.16;
+
+          openingBoat.rotation.y =
+            Math.PI +
+            Math.sin(
+              e * Math.PI * 2.0
+            ) * 0.035;
+
+          wakeGroup.scale.z =
+            THREE.MathUtils.lerp(
+              0.92,
+              1.15,
+              e
+            );
+
+          openingBoat.visible = true;
+          return;
+        }
+
+        openingBoat.visible = false;
+      }
+
       function updateCamera(progress) {
+
+        updateOpeningBoat(progress);
 
         if (prefersReducedMotion) {
           progress = 0.18;
@@ -4402,7 +5193,16 @@
       camera.fov = cameraFovTarget;
       camera.position.copy(cameraPosition);
       camera.lookAt(cameraLook);
-      gsap.set(journeyCopy, { autoAlpha: 1, visibility: "visible", x: 0 });
+      gsap.set(journeyCopy, { autoAlpha: 0, visibility: "hidden", x: 0 });
+      openingBoat.visible = true;
+      gsap.set(".hero__eyebrow, .hero__subline, .hero__scroll, .hero__chapter", {
+        autoAlpha: 0
+      });
+      gsap.set(".hero__title", {
+        autoAlpha: 1,
+        y: 0,
+        scale: 1
+      });
       renderJourney(0, true);
 
       /* =======================================================
@@ -4423,11 +5223,9 @@
          * cinematic travel once the section was pinned.
          */
         end:
-          mobile
-            ? "+=420%"
-            : "+=2200%",
+          mobile ? "+=270%" : "+=500%",
 
-        scrub: 1.25,
+        scrub: window.innerWidth <= 600 ? 0.42 : 0.72,
 
         pin: true,
 
@@ -4443,7 +5241,58 @@
           );
 
           setWaterFirstVisibility(progress);
-          renderJourney(progress);
+
+          const openingEnd = 0.16;
+
+          // SANTINOPOLE is the only opening typography.
+          // It remains visible during the macro-water view and
+          // dissolves as the camera pulls out.
+          const titleFade = gsap.utils.clamp(
+            0,
+            1,
+            (progress - 0.075) / 0.085
+          );
+
+          gsap.set(".hero__title", {
+            autoAlpha: 1 - titleFade,
+            y: -18 * titleFade,
+            scale: 1 - 0.02 * titleFade
+          });
+
+          if (progress < openingEnd) {
+            gsap.set(journeyCopy, {
+              autoAlpha: 0,
+              visibility: "hidden"
+            });
+
+            gsap.set(
+              ".hero__eyebrow, .hero__subline, .hero__scroll, .hero__chapter",
+              { autoAlpha: 0 }
+            );
+          } else {
+            renderJourney(progress);
+
+            gsap.set(journeyCopy, {
+              autoAlpha: gsap.utils.clamp(
+                0,
+                1,
+                (progress - openingEnd) / 0.08
+              ),
+              visibility: "visible"
+            });
+
+            gsap.set(".hero__eyebrow, .hero__subline, .hero__chapter", {
+              autoAlpha: gsap.utils.clamp(
+                0,
+                1,
+                (progress - openingEnd) / 0.08
+              )
+            });
+
+            gsap.set(".hero__scroll", {
+              autoAlpha: 0
+            });
+          }
 
           const fade =
             gsap.utils.clamp(
@@ -4451,7 +5300,7 @@
               1,
               (
                 progress -
-                0.06
+                0.22
               ) / 0.28
             );
 
@@ -4679,7 +5528,7 @@
           Math.min(
             window.devicePixelRatio ||
               1,
-            mobile ? 1.35 : 1.6
+            mobile ? 1.0 : 1.5
           )
         );
 
@@ -4720,7 +5569,7 @@
               180deg,
               #91a7ab 0%,
               #e9dfcc 48%,
-              #1c4a47 49%,
+              #2a5f5b 49%,
               #153d3a 100%
             );
         "></div>
@@ -5170,6 +6019,9 @@
     );
 
   </script>
+
+
+<script id="first-scroll-text-logic"><!-- ScrollTrigger owns hero typography timing. --></script>
 
 </body>
 </html>
